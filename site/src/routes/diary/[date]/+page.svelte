@@ -117,8 +117,10 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<!-- Compact Glass Header -->
-	<header class="glass border-b border-border/50 sticky top-0 z-20">
+	<!-- Sticky Header Container -->
+	<div class="sticky top-0 z-20">
+		<!-- Compact Glass Header -->
+		<header class="glass border-b border-border/50">
 		<div class="max-w-6xl mx-auto px-4 py-2">
 			<div class="flex items-center justify-between gap-4">
 				<!-- Navigation -->
@@ -212,14 +214,15 @@
 		</div>
 	</header>
 
-	<!-- Mobile TOC Dropdown -->
-	{#if showMobileToc}
-		<div class="lg:hidden glass border-b border-border/50 animate-slide-in-down">
-			<div class="max-w-6xl mx-auto px-4 py-3">
-				<TableOfContents {content} />
+		<!-- Mobile TOC - Inside sticky container -->
+		{#if showMobileToc}
+			<div class="lg:hidden glass-subtle border-b border-border/50 animate-slide-in-down">
+				<div class="max-w-6xl mx-auto px-4 py-2 max-h-[30vh] overflow-y-auto">
+					<TableOfContents {content} />
+				</div>
 			</div>
-		</div>
-	{/if}
+		{/if}
+	</div>
 
 	<!-- Main Content -->
 	<div class="max-w-6xl mx-auto px-4 py-6">
