@@ -27,8 +27,9 @@
 		loadDatesWithDiaries();
 	});
 
+	// Only run in browser, not during SSR
 	$: {
-		if (currentYear && currentMonth) {
+		if (currentYear && currentMonth && typeof window !== 'undefined') {
 			loadDatesWithDiaries();
 		}
 	}

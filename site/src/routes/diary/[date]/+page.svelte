@@ -94,6 +94,8 @@
 		}
 	}
 
+	let previousDate = '';
+
 	onMount(() => {
 		if (!$isAuthenticated) {
 			goto('/login');
@@ -105,8 +107,8 @@
 		};
 	});
 
-	let previousDate = '';
-	$: if (date && date !== previousDate) {
+	// Load diary only in browser (not during SSR)
+	$: if (date && date !== previousDate && typeof window !== 'undefined') {
 		previousDate = date;
 		loadDiary(date);
 	}

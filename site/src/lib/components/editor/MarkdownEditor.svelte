@@ -57,7 +57,7 @@
 </script>
 
 <div class="markdown-editor">
-	<div bind:this={editorContainer} class="editor-container" />
+	<div bind:this={editorContainer} class="editor-container"></div>
 	{#if !content}
 		<div class="editor-placeholder">
 			{placeholder}
