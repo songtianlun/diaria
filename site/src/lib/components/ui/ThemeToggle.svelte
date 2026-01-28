@@ -52,7 +52,7 @@
 	</button>
 
 	{#if isOpen}
-		<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 py-1 min-w-[120px]
+		<div class="absolute bottom-full right-0 mb-2 py-1 min-w-[120px]
 					bg-card border border-border rounded-lg shadow-lg
 					animate-slide-in-down z-50">
 			{#each themes as t}
