@@ -3,6 +3,8 @@
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import MarkdownEditor from '$lib/components/editor/MarkdownEditor.svelte';
+	import TableOfContents from '$lib/components/ui/TableOfContents.svelte';
+	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 	import { getDiaryByDate } from '$lib/api/diaries';
 	import { isAuthenticated } from '$lib/api/client';
 	import {
@@ -25,17 +27,14 @@
 
 	let content = '';
 	let loading = true;
-	let loadRequestId = 0; // Track request version to handle race conditions
+	let loadRequestId = 0;
+	let showMobileToc = false;
 
-	// Use reactive statement to always get current date from URL
 	$: date = $page.params.date;
 	$: canGoNext = !isToday(date);
-
-	// Global sync status - show syncing state regardless of which date is being synced
 	$: currentDateIsDirty = date ? $diaryCache[date]?.isDirty || false : false;
 	$: isAnySyncing = $syncState.isSyncing;
 
-	// Navigation - use current page params directly
 	function goToPreviousDay() {
 		const prevDate = getPreviousDay($page.params.date);
 		goto(`/diary/${prevDate}`);
@@ -57,16 +56,11 @@
 		goto('/diary');
 	}
 
-	// Load diary content
 	async function loadDiary(targetDate: string) {
-		// Increment request ID to track this specific request
 		const currentRequestId = ++loadRequestId;
-
-		// Immediately show cached content if available
 		const cached = getCachedContent(targetDate);
 		if (cached) {
 			content = cached.content;
-			// If dirty, don't fetch from server
 			if (cached.isDirty) {
 				loading = false;
 				return;
@@ -74,44 +68,25 @@
 		} else {
 			content = '';
 		}
-
 		loading = true;
-
-		// Fetch from server
 		const diary = await getDiaryByDate(targetDate);
-
-		// Check if this request is still the latest one
-		// This handles race conditions when user switches dates quickly
-		if (currentRequestId !== loadRequestId) {
-			return;
-		}
-
-		// Update cache from server
+		if (currentRequestId !== loadRequestId) return;
 		updateFromServer(targetDate, diary);
-
-		// Final check before updating UI
-		if (currentRequestId !== loadRequestId) {
-			return;
-		}
-
-		// Get content from cache
+		if (currentRequestId !== loadRequestId) return;
 		const updatedCache = getCachedContent(targetDate);
 		content = updatedCache?.content || '';
 		loading = false;
 	}
 
-	// Auto-save with debounce - update local cache
 	function handleContentChange(newContent: string) {
 		content = newContent;
 		updateLocalCache(date, newContent);
 	}
 
-	// Manual save
 	async function handleManualSave() {
 		await forceSyncNow();
 	}
 
-	// Keyboard shortcuts
 	function handleKeyboard(event: KeyboardEvent) {
 		if ((event.ctrlKey || event.metaKey) && event.key === 's') {
 			event.preventDefault();
@@ -120,20 +95,16 @@
 	}
 
 	onMount(() => {
-		// Check authentication
 		if (!$isAuthenticated) {
 			goto('/login');
 			return;
 		}
-
 		window.addEventListener('keydown', handleKeyboard);
-
 		return () => {
 			window.removeEventListener('keydown', handleKeyboard);
 		};
 	});
 
-	// Reload when date changes
 	let previousDate = '';
 	$: if (date && date !== previousDate) {
 		previousDate = date;
@@ -145,108 +116,85 @@
 	<title>{formatDisplayDate(date)} - Diaria</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
-	<!-- Header -->
-	<header class="bg-white border-b border-gray-200 sticky top-0 z-10">
-		<div class="max-w-4xl mx-auto px-4 py-4">
-			<div class="flex items-center justify-between">
+<div class="min-h-screen bg-background">
+	<!-- Compact Glass Header -->
+	<header class="glass border-b border-border/50 sticky top-0 z-20">
+		<div class="max-w-6xl mx-auto px-4 py-2">
+			<div class="flex items-center justify-between gap-4">
 				<!-- Navigation -->
-				<div class="flex items-center gap-2">
+				<div class="flex items-center gap-1">
 					<button
 						on:click={goToPreviousDay}
 						disabled={loading}
-						class="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200 disabled:opacity-50"
 						title="Previous day"
 					>
-						<svg
-							class="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M15 19l-7-7 7-7"
-							/>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 						</svg>
 					</button>
 
 					<button
 						on:click={goToNextDay}
 						disabled={loading || !canGoNext}
-						class="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200 disabled:opacity-50"
 						title={canGoNext ? "Next day" : "Cannot go beyond today"}
 					>
-						<svg
-							class="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M9 5l7 7-7 7"
-							/>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 						</svg>
 					</button>
 
 					<button
 						on:click={goToCalendar}
 						disabled={loading}
-						class="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+						class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200 disabled:opacity-50"
 						title="Calendar"
 					>
-						<svg
-							class="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-							/>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+								d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
 						</svg>
 					</button>
 				</div>
 
 				<!-- Date Display -->
 				<div class="flex-1 text-center">
-					<h1 class="text-xl font-semibold text-gray-900">
+					<h1 class="text-base font-semibold text-foreground inline-flex items-center gap-2">
 						{formatDisplayDate(date)}
-					</h1>
-					<p class="text-sm text-gray-500">
-						{getDayOfWeek(date)}
 						{#if isToday(date)}
-							<span class="text-blue-600 font-medium">• Today</span>
+							<span class="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">Today</span>
 						{/if}
-					</p>
+					</h1>
+					<p class="text-xs text-muted-foreground">{getDayOfWeek(date)}</p>
 				</div>
 
 				<!-- Actions -->
-				<div class="flex items-center gap-3">
-					<!-- Sync Status Icon -->
-					<div class="flex items-center" title={isAnySyncing ? 'Syncing...' : currentDateIsDirty ? 'Unsaved changes' : 'Synced'}>
+				<div class="flex items-center gap-2">
+					<!-- Mobile TOC Toggle -->
+					<button
+						on:click={() => (showMobileToc = !showMobileToc)}
+						class="lg:hidden p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200"
+						title="Table of contents"
+					>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+						</svg>
+					</button>
+
+					<!-- Sync Status -->
+					<div class="flex items-center" title={isAnySyncing ? 'Syncing...' : currentDateIsDirty ? 'Unsaved' : 'Synced'}>
 						{#if isAnySyncing}
-							<!-- Syncing: spinning ring -->
-							<svg class="w-5 h-5 text-yellow-500 animate-spin" fill="none" viewBox="0 0 24 24">
+							<svg class="w-4 h-4 text-yellow-500 animate-spin" fill="none" viewBox="0 0 24 24">
 								<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-dasharray="40 20" stroke-linecap="round"></circle>
 							</svg>
 						{:else if currentDateIsDirty}
-							<!-- Dirty: pencil edit icon -->
-							<svg class="w-5 h-5 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
 							</svg>
 						{:else}
-							<!-- Synced: cloud check -->
-							<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+							<svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
 							</svg>
 						{/if}
 					</div>
@@ -254,7 +202,7 @@
 					{#if !isToday(date)}
 						<button
 							on:click={goToToday}
-							class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+							class="px-2 py-1 text-xs bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-all duration-200"
 						>
 							Today
 						</button>
@@ -264,37 +212,68 @@
 		</div>
 	</header>
 
-	<!-- Editor -->
-	<main class="max-w-4xl mx-auto px-4 py-8">
-		{#if loading}
-			<div class="flex flex-col items-center justify-center py-20 gap-3">
-				<svg class="w-8 h-8 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-					<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-				</svg>
-				<div class="text-gray-500">Loading diary...</div>
+	<!-- Mobile TOC Dropdown -->
+	{#if showMobileToc}
+		<div class="lg:hidden glass border-b border-border/50 animate-slide-in-down">
+			<div class="max-w-6xl mx-auto px-4 py-3">
+				<TableOfContents {content} />
 			</div>
-		{:else}
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-				<MarkdownEditor
-					{content}
-					onChange={handleContentChange}
-					placeholder="What's on your mind today?"
-				/>
-			</div>
-		{/if}
-	</main>
+		</div>
+	{/if}
 
-	<!-- Footer hint -->
-	<footer class="max-w-4xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
-		Press <kbd class="px-2 py-1 bg-gray-100 rounded">Ctrl+S</kbd> or
-		<kbd class="px-2 py-1 bg-gray-100 rounded">⌘S</kbd> to save manually
+	<!-- Main Content -->
+	<div class="max-w-6xl mx-auto px-4 py-6">
+		<div class="flex gap-6">
+			<!-- Editor -->
+			<main class="flex-1 min-w-0">
+				{#if loading}
+					<div class="flex flex-col items-center justify-center py-20 gap-3 animate-fade-in">
+						<svg class="w-6 h-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+						<div class="text-muted-foreground text-sm">Loading...</div>
+					</div>
+				{:else}
+					<div class="bg-card rounded-xl shadow-sm border border-border/50 overflow-hidden animate-fade-in">
+						<MarkdownEditor
+							{content}
+							onChange={handleContentChange}
+							placeholder="What's on your mind today?"
+						/>
+					</div>
+				{/if}
+			</main>
+
+			<!-- Desktop TOC Sidebar -->
+			<aside class="hidden lg:block w-56 flex-shrink-0">
+				<div class="sticky top-16 animate-slide-in-right">
+					<div class="bg-card/50 rounded-xl border border-border/50 p-4">
+						<TableOfContents {content} />
+					</div>
+				</div>
+			</aside>
+		</div>
+	</div>
+
+	<!-- Footer -->
+	<footer class="border-t border-border/50 mt-8">
+		<div class="max-w-6xl mx-auto px-4 py-3">
+			<div class="flex items-center justify-between">
+				<div class="text-xs text-muted-foreground">
+					<kbd class="px-1.5 py-0.5 bg-muted rounded text-[10px]">Ctrl+S</kbd>
+					<span class="mx-1">or</span>
+					<kbd class="px-1.5 py-0.5 bg-muted rounded text-[10px]">⌘S</kbd>
+					<span class="ml-1">to save</span>
+				</div>
+				<ThemeToggle />
+			</div>
+		</div>
 	</footer>
 </div>
 
 <style>
 	kbd {
-		font-family: monospace;
-		font-size: 0.875em;
+		font-family: ui-monospace, monospace;
 	}
 </style>

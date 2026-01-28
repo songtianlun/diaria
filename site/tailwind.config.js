@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 export default {
 	content: ['./src/**/*.{html,js,svelte,ts}'],
+	darkMode: 'class',
 	theme: {
 		extend: {
 			colors: {
@@ -24,7 +25,16 @@ export default {
 				accent: {
 					DEFAULT: 'hsl(var(--accent))',
 					foreground: 'hsl(var(--accent-foreground))'
+				},
+				card: {
+					DEFAULT: 'hsl(var(--card))',
+					foreground: 'hsl(var(--card-foreground))'
 				}
+			},
+			animation: {
+				'fade-in': 'fade-in 0.3s ease-out forwards',
+				'slide-in-right': 'slide-in-right 0.3s ease-out forwards',
+				'slide-in-down': 'slide-in-down 0.2s ease-out forwards'
 			}
 		}
 	},

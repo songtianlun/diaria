@@ -37,7 +37,6 @@
 		}
 	});
 
-	// Update editor content when prop changes
 	$: if (editor && content !== undefined) {
 		try {
 			editor.action((ctx) => {
@@ -47,7 +46,6 @@
 						return ctx.get(defaultValueCtx);
 					});
 					if (currentContent !== content) {
-						// Only update if content is different to avoid cursor issues
 						ctx.set(defaultValueCtx, content);
 					}
 				}
@@ -86,9 +84,10 @@
 		position: absolute;
 		top: 16px;
 		left: 16px;
-		color: #94a3b8;
+		color: hsl(var(--muted-foreground));
 		pointer-events: none;
 		font-size: 16px;
+		opacity: 0.6;
 	}
 
 	:global(.milkdown) {
@@ -97,6 +96,8 @@
 		word-wrap: break-word;
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
+		background: transparent !important;
+		color: hsl(var(--foreground));
 	}
 
 	:global(.milkdown .editor) {
@@ -105,27 +106,32 @@
 
 	:global(.milkdown p) {
 		margin-bottom: 1em;
+		color: hsl(var(--foreground));
 	}
 
 	:global(.milkdown h1) {
-		font-size: 2em;
-		font-weight: bold;
+		font-size: 1.875em;
+		font-weight: 700;
 		margin-bottom: 0.5em;
 		margin-top: 1em;
+		color: hsl(var(--foreground));
+		letter-spacing: -0.025em;
 	}
 
 	:global(.milkdown h2) {
 		font-size: 1.5em;
-		font-weight: bold;
+		font-weight: 600;
 		margin-bottom: 0.5em;
 		margin-top: 0.75em;
+		color: hsl(var(--foreground));
 	}
 
 	:global(.milkdown h3) {
 		font-size: 1.25em;
-		font-weight: bold;
+		font-weight: 600;
 		margin-bottom: 0.5em;
 		margin-top: 0.5em;
+		color: hsl(var(--foreground));
 	}
 
 	:global(.milkdown ul),
@@ -139,19 +145,25 @@
 	}
 
 	:global(.milkdown code) {
-		background-color: #f1f5f9;
+		background-color: hsl(var(--muted));
+		color: hsl(var(--foreground));
 		padding: 0.2em 0.4em;
-		border-radius: 3px;
-		font-family: 'Courier New', monospace;
+		border-radius: 4px;
+		font-family: ui-monospace, monospace;
+		font-size: 0.9em;
 	}
 
 	:global(.milkdown pre) {
-		background-color: #1e293b;
-		color: #e2e8f0;
+		background-color: hsl(222.2 84% 6%);
+		color: hsl(210 40% 98%);
 		padding: 1em;
-		border-radius: 6px;
+		border-radius: 8px;
 		overflow-x: auto;
 		margin-bottom: 1em;
+	}
+
+	:global(.dark .milkdown pre) {
+		background-color: hsl(217.2 32.6% 12%);
 	}
 
 	:global(.milkdown pre code) {
@@ -161,10 +173,34 @@
 	}
 
 	:global(.milkdown blockquote) {
-		border-left: 4px solid #cbd5e1;
+		border-left: 3px solid hsl(var(--border));
 		padding-left: 1em;
 		margin-left: 0;
 		margin-bottom: 1em;
-		color: #64748b;
+		color: hsl(var(--muted-foreground));
+	}
+
+	:global(.milkdown a) {
+		color: hsl(221.2 83.2% 53.3%);
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+
+	:global(.milkdown a:hover) {
+		opacity: 0.8;
+	}
+
+	:global(.milkdown hr) {
+		border: none;
+		border-top: 1px solid hsl(var(--border));
+		margin: 1.5em 0;
+	}
+
+	:global(.milkdown strong) {
+		font-weight: 600;
+	}
+
+	:global(.milkdown em) {
+		font-style: italic;
 	}
 </style>

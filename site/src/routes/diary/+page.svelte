@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import Calendar from '$lib/components/calendar/Calendar.svelte';
+	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 	import { getDatesWithDiaries } from '$lib/api/diaries';
 	import { isAuthenticated } from '$lib/api/client';
 	import { getMonthRange } from '$lib/utils/date';
@@ -19,16 +20,13 @@
 	}
 
 	onMount(() => {
-		// Check authentication
 		if (!$isAuthenticated) {
 			goto('/login');
 			return;
 		}
-
 		loadDatesWithDiaries();
 	});
 
-	// Reload when month/year changes
 	$: {
 		if (currentYear && currentMonth) {
 			loadDatesWithDiaries();
@@ -40,34 +38,30 @@
 	<title>Calendar - Diaria</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50">
+<div class="min-h-screen bg-background">
 	<!-- Header -->
-	<header class="bg-white border-b border-gray-200">
-		<div class="max-w-6xl mx-auto px-4 py-4">
+	<header class="glass border-b border-border/50 sticky top-0 z-20">
+		<div class="max-w-6xl mx-auto px-4 py-2">
 			<div class="flex items-center justify-between">
-				<h1 class="text-2xl font-bold text-gray-900">Diaria</h1>
+				<h1 class="text-lg font-semibold text-foreground">Diaria</h1>
 
-				<div class="flex items-center gap-3">
+				<div class="flex items-center gap-2">
 					<a
 						href="/search"
-						class="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+						class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200"
 						title="Search"
 					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-							/>
+						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+								d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
 						</svg>
 					</a>
 
 					<a
 						href="/diary/{new Date().toISOString().split('T')[0]}"
-						class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+						class="px-3 py-1.5 text-sm bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-all duration-200"
 					>
-						Today's Diary
+						Today
 					</a>
 				</div>
 			</div>
@@ -75,11 +69,15 @@
 	</header>
 
 	<!-- Calendar -->
-	<main class="max-w-6xl mx-auto px-4 py-8">
-		<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+	<main class="max-w-6xl mx-auto px-4 py-6">
+		<div class="bg-card rounded-xl shadow-sm border border-border/50 p-6 animate-fade-in">
 			{#if loading}
-				<div class="flex items-center justify-center py-20">
-					<div class="text-gray-500">Loading calendar...</div>
+				<div class="flex flex-col items-center justify-center py-20 gap-3">
+					<svg class="w-6 h-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
+						<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+						<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+					</svg>
+					<div class="text-muted-foreground text-sm">Loading...</div>
 				</div>
 			{:else}
 				<Calendar bind:currentYear bind:currentMonth {datesWithDiaries} />
@@ -88,24 +86,36 @@
 
 		<!-- Stats -->
 		<div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-				<div class="text-sm text-gray-600">Entries this month</div>
-				<div class="text-2xl font-bold text-gray-900 mt-1">
+			<div class="bg-card rounded-xl shadow-sm border border-border/50 p-4 animate-fade-in" style="animation-delay: 100ms">
+				<div class="text-sm text-muted-foreground">Entries this month</div>
+				<div class="text-2xl font-bold text-foreground mt-1">
 					{datesWithDiaries.length}
 				</div>
 			</div>
 
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-				<div class="text-sm text-gray-600">Current streak</div>
-				<div class="text-2xl font-bold text-gray-900 mt-1">-</div>
-				<div class="text-xs text-gray-500 mt-1">Coming soon</div>
+			<div class="bg-card rounded-xl shadow-sm border border-border/50 p-4 animate-fade-in opacity-0" style="animation-delay: 150ms">
+				<div class="text-sm text-muted-foreground">Current streak</div>
+				<div class="text-2xl font-bold text-foreground mt-1">-</div>
+				<div class="text-xs text-muted-foreground/70 mt-1">Coming soon</div>
 			</div>
 
-			<div class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-				<div class="text-sm text-gray-600">Total entries</div>
-				<div class="text-2xl font-bold text-gray-900 mt-1">-</div>
-				<div class="text-xs text-gray-500 mt-1">Coming soon</div>
+			<div class="bg-card rounded-xl shadow-sm border border-border/50 p-4 animate-fade-in opacity-0" style="animation-delay: 200ms">
+				<div class="text-sm text-muted-foreground">Total entries</div>
+				<div class="text-2xl font-bold text-foreground mt-1">-</div>
+				<div class="text-xs text-muted-foreground/70 mt-1">Coming soon</div>
 			</div>
 		</div>
 	</main>
+
+	<!-- Footer -->
+	<footer class="border-t border-border/50 mt-8">
+		<div class="max-w-6xl mx-auto px-4 py-3">
+			<div class="flex items-center justify-between">
+				<div class="text-xs text-muted-foreground">
+					Your personal diary
+				</div>
+				<ThemeToggle />
+			</div>
+		</div>
+	</footer>
 </div>

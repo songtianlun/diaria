@@ -3,23 +3,13 @@
 	import { formatDate, getCalendarDays, getToday } from '$lib/utils/date';
 
 	export let currentYear: number;
-	export let currentMonth: number; // 1-12
+	export let currentMonth: number;
 	export let datesWithDiaries: string[] = [];
 
 	const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 	const monthNames = [
-		'January',
-		'February',
-		'March',
-		'April',
-		'May',
-		'June',
-		'July',
-		'August',
-		'September',
-		'October',
-		'November',
-		'December'
+		'January', 'February', 'March', 'April', 'May', 'June',
+		'July', 'August', 'September', 'October', 'November', 'December'
 	];
 
 	$: calendarDays = getCalendarDays(currentYear, currentMonth);
@@ -68,48 +58,63 @@
 
 <div class="calendar">
 	<!-- Calendar Header -->
-	<div class="calendar-header">
-		<button on:click={goToPreviousMonth} class="nav-button" title="Previous month">
-			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+	<div class="flex items-center justify-between mb-6 px-2">
+		<button
+			on:click={goToPreviousMonth}
+			class="p-2 rounded-lg hover:bg-muted/50 transition-all duration-200"
+			title="Previous month"
+		>
+			<svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
 			</svg>
 		</button>
 
-		<div class="month-year">
-			<h2 class="text-xl font-semibold">
-				{monthNames[currentMonth - 1]}
-				{currentYear}
+		<div class="flex items-center gap-3">
+			<h2 class="text-lg font-semibold text-foreground">
+				{monthNames[currentMonth - 1]} {currentYear}
 			</h2>
-			<button on:click={goToToday} class="today-button"> Today </button>
+			<button
+				on:click={goToToday}
+				class="px-3 py-1 text-sm bg-primary text-primary-foreground rounded-md hover:opacity-90 transition-all duration-200"
+			>
+				Today
+			</button>
 		</div>
 
-		<button on:click={goToNextMonth} class="nav-button" title="Next month">
-			<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+		<button
+			on:click={goToNextMonth}
+			class="p-2 rounded-lg hover:bg-muted/50 transition-all duration-200"
+			title="Next month"
+		>
+			<svg class="w-5 h-5 text-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 			</svg>
 		</button>
 	</div>
 
 	<!-- Week Days -->
-	<div class="weekdays">
+	<div class="grid grid-cols-7 gap-2 mb-2">
 		{#each weekDays as day}
-			<div class="weekday">{day}</div>
+			<div class="text-center font-medium text-muted-foreground text-sm py-2">{day}</div>
 		{/each}
 	</div>
 
 	<!-- Calendar Days -->
-	<div class="days">
-		{#each calendarDays as date}
+	<div class="grid grid-cols-7 gap-2">
+		{#each calendarDays as date, i}
 			<button
 				on:click={() => handleDateClick(date)}
-				class="day
-					{isCurrentMonth(date) ? 'current-month' : 'other-month'}
-					{isToday(date) ? 'today' : ''}
-					{hasDiary(date) ? 'has-diary' : ''}"
+				class="day aspect-square rounded-lg transition-all duration-200 flex flex-col items-center justify-center relative
+					   {isCurrentMonth(date) ? 'text-foreground' : 'text-muted-foreground/40'}
+					   {isToday(date) ? 'bg-primary/10 ring-2 ring-primary font-semibold' : ''}
+					   {hasDiary(date) && !isToday(date) ? 'bg-amber-500/10 dark:bg-amber-500/20' : ''}
+					   {!isToday(date) && !hasDiary(date) ? 'hover:bg-muted/50' : ''}
+					   {hasDiary(date) && !isToday(date) ? 'hover:bg-amber-500/20 dark:hover:bg-amber-500/30' : ''}"
+				style="animation-delay: {i * 10}ms"
 			>
-				<span class="day-number">{date.getDate()}</span>
+				<span class="text-sm">{date.getDate()}</span>
 				{#if hasDiary(date)}
-					<span class="diary-indicator"></span>
+					<span class="absolute bottom-1 w-1 h-1 bg-amber-500 rounded-full"></span>
 				{/if}
 			</button>
 		{/each}
@@ -123,132 +128,9 @@
 		margin: 0 auto;
 	}
 
-	.calendar-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		margin-bottom: 1.5rem;
-		padding: 0 0.5rem;
-	}
-
-	.nav-button {
-		padding: 0.5rem;
-		border-radius: 0.5rem;
-		transition: background-color 0.2s;
-	}
-
-	.nav-button:hover {
-		background-color: #f3f4f6;
-	}
-
-	.month-year {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-	}
-
-	.today-button {
-		padding: 0.375rem 0.75rem;
-		font-size: 0.875rem;
-		background-color: #3b82f6;
-		color: white;
-		border-radius: 0.375rem;
-		transition: background-color 0.2s;
-	}
-
-	.today-button:hover {
-		background-color: #2563eb;
-	}
-
-	.weekdays {
-		display: grid;
-		grid-template-columns: repeat(7, 1fr);
-		gap: 0.5rem;
-		margin-bottom: 0.5rem;
-	}
-
-	.weekday {
-		text-align: center;
-		font-weight: 600;
-		color: #6b7280;
-		padding: 0.5rem;
-		font-size: 0.875rem;
-	}
-
-	.days {
-		display: grid;
-		grid-template-columns: repeat(7, 1fr);
-		gap: 0.5rem;
-	}
-
-	.day {
-		position: relative;
-		aspect-ratio: 1;
-		border-radius: 0.5rem;
-		transition: all 0.2s;
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		cursor: pointer;
-		border: 2px solid transparent;
-	}
-
-	.day:hover {
-		background-color: #f3f4f6;
-	}
-
-	.day.current-month {
-		color: #1f2937;
-	}
-
-	.day.other-month {
-		color: #d1d5db;
-	}
-
-	.day.today {
-		background-color: #dbeafe;
-		border-color: #3b82f6;
-		font-weight: 600;
-	}
-
-	.day.has-diary {
-		background-color: #fef3c7;
-	}
-
-	.day.has-diary:hover {
-		background-color: #fde68a;
-	}
-
-	.day.today.has-diary {
-		background-color: #bfdbfe;
-	}
-
-	.day-number {
-		font-size: 0.875rem;
-	}
-
-	.diary-indicator {
-		position: absolute;
-		bottom: 0.25rem;
-		width: 4px;
-		height: 4px;
-		background-color: #f59e0b;
-		border-radius: 50%;
-	}
-
 	@media (max-width: 640px) {
-		.weekday {
+		.day {
 			font-size: 0.75rem;
-			padding: 0.25rem;
-		}
-
-		.day-number {
-			font-size: 0.75rem;
-		}
-
-		.days {
-			gap: 0.25rem;
 		}
 	}
 </style>
