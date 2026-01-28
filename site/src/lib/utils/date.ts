@@ -53,11 +53,11 @@ export function formatDisplayDate(dateStr: string): string {
 }
 
 /**
- * Get day of week (e.g., "Monday")
+ * Get day of week (e.g., "Mon")
  */
 export function getDayOfWeek(dateStr: string): string {
 	const date = parseDate(dateStr);
-	return date.toLocaleDateString('en-US', { weekday: 'long' });
+	return date.toLocaleDateString('en-US', { weekday: 'short' });
 }
 
 /**

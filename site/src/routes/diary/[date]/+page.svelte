@@ -162,13 +162,13 @@
 
 				<!-- Date Display -->
 				<div class="flex-1 text-center">
-					<h1 class="text-base font-semibold text-foreground inline-flex items-center gap-2">
+					<h1 class="text-lg font-semibold text-foreground inline-flex items-center gap-2">
 						{formatDisplayDate(date)}
+						<span class="text-xs text-muted-foreground font-normal">{getDayOfWeek(date)}</span>
 						{#if isToday(date)}
 							<span class="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">Today</span>
 						{/if}
 					</h1>
-					<p class="text-xs text-muted-foreground">{getDayOfWeek(date)}</p>
 				</div>
 
 				<!-- Actions -->
