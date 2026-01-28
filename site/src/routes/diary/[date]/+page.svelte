@@ -25,14 +25,15 @@
 
 	let content = '';
 	let loading = true;
+	let loadRequestId = 0; // Track request version to handle race conditions
 
 	// Use reactive statement to always get current date from URL
 	$: date = $page.params.date;
 	$: canGoNext = !isToday(date);
 
-	// Reactive sync status for current date
+	// Global sync status - show syncing state regardless of which date is being synced
 	$: currentDateIsDirty = date ? $diaryCache[date]?.isDirty || false : false;
-	$: isSyncingCurrentDate = $syncState.isSyncing && $syncState.currentDate === date;
+	$: isAnySyncing = $syncState.isSyncing;
 
 	// Navigation - use current page params directly
 	function goToPreviousDay() {
@@ -58,6 +59,9 @@
 
 	// Load diary content
 	async function loadDiary(targetDate: string) {
+		// Increment request ID to track this specific request
+		const currentRequestId = ++loadRequestId;
+
 		// Immediately show cached content if available
 		const cached = getCachedContent(targetDate);
 		if (cached) {
@@ -76,13 +80,19 @@
 		// Fetch from server
 		const diary = await getDiaryByDate(targetDate);
 
-		// Check if date changed during fetch
-		if (targetDate !== date) {
+		// Check if this request is still the latest one
+		// This handles race conditions when user switches dates quickly
+		if (currentRequestId !== loadRequestId) {
 			return;
 		}
 
 		// Update cache from server
 		updateFromServer(targetDate, diary);
+
+		// Final check before updating UI
+		if (currentRequestId !== loadRequestId) {
+			return;
+		}
 
 		// Get content from cache
 		const updatedCache = getCachedContent(targetDate);
@@ -222,8 +232,8 @@
 				<!-- Actions -->
 				<div class="flex items-center gap-3">
 					<!-- Sync Status Icon -->
-					<div class="flex items-center" title={isSyncingCurrentDate ? 'Syncing...' : currentDateIsDirty ? 'Unsaved changes' : 'Synced'}>
-						{#if isSyncingCurrentDate}
+					<div class="flex items-center" title={isAnySyncing ? 'Syncing...' : currentDateIsDirty ? 'Unsaved changes' : 'Synced'}>
+						{#if isAnySyncing}
 							<!-- Syncing: spinning ring -->
 							<svg class="w-5 h-5 text-yellow-500 animate-spin" fill="none" viewBox="0 0 24 24">
 								<circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.5" stroke-dasharray="40 20" stroke-linecap="round"></circle>
