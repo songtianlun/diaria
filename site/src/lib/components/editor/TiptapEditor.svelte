@@ -12,6 +12,7 @@
 	import CharacterCount from '@tiptap/extension-character-count';
 	import Typography from '@tiptap/extension-typography';
 	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+	import Focus from '@tiptap/extension-focus';
 	import { common, createLowlight } from 'lowlight';
 	import { uploadImage, getMediaUrl } from '$lib/utils/uploadImage';
 	import { SlashCommands } from './SlashCommands';
@@ -28,6 +29,11 @@
 	let fileInput: HTMLInputElement;
 	let isUploading = false;
 	let uploadError = '';
+
+	// Mobile add button state
+	let isTouchDevice = false;
+	let showAddButton = false;
+	let addButtonPosition = { top: 0, left: 0 };
 
 	const lowlight = createLowlight(common);
 
@@ -134,7 +140,43 @@
 		}
 	}
 
+	// Check if current line is empty and update add button position
+	function updateAddButtonState() {
+		if (!editor || !isTouchDevice) {
+			showAddButton = false;
+			return;
+		}
+
+		const { selection } = editor.state;
+		const { $from } = selection;
+		const node = $from.parent;
+
+		// Check if current node is an empty paragraph
+		if (node.type.name === 'paragraph' && node.content.size === 0) {
+			// Get cursor position
+			const coords = editor.view.coordsAtPos($from.pos);
+			const editorRect = editorElement.getBoundingClientRect();
+
+			addButtonPosition = {
+				top: coords.top - editorRect.top - 2,
+				left: -32,
+			};
+			showAddButton = true;
+		} else {
+			showAddButton = false;
+		}
+	}
+
+	// Handle add button click - insert slash to trigger menu
+	function handleAddButtonClick() {
+		if (!editor) return;
+		editor.chain().focus().insertContent('/').run();
+	}
+
 	onMount(() => {
+		// Detect touch device
+		isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+
 		// Register image upload trigger for slash commands
 		setImageUploadTrigger(handleSlashImage);
 
@@ -145,11 +187,21 @@
 					codeBlock: false,
 				}),
 				Placeholder.configure({
-					placeholder,
+					placeholder: ({ node }) => {
+						if (node.type.name === 'paragraph') {
+							return 'Type / to browse options';
+						}
+						return placeholder;
+					},
+					showOnlyCurrent: true,
 				}),
 				Image.configure({
 					inline: false,
 					allowBase64: true,
+				}),
+				Focus.configure({
+					className: 'has-focus',
+					mode: 'all',
 				}),
 				Link.configure({
 					openOnClick: false,
@@ -188,6 +240,8 @@
 			onTransaction: () => {
 				// Force re-render so `editor.isActive` works as expected
 				editor = editor;
+				// Update add button state for mobile
+				updateAddButtonState();
 			},
 		});
 	});
@@ -209,6 +263,17 @@
 
 <div class="tiptap-editor">
 	<div bind:this={editorElement} class="editor-container"></div>
+	{#if showAddButton}
+		<button
+			type="button"
+			class="mobile-add-button"
+			style="top: {addButtonPosition.top}px; left: {addButtonPosition.left}px;"
+			on:click={handleAddButtonClick}
+			aria-label="Insert content"
+		>
+			+
+		</button>
+	{/if}
 	<input
 		type="file"
 		accept="image/*"
@@ -233,6 +298,31 @@
 
 	.editor-container {
 		min-height: 500px;
+	}
+
+	/* Mobile add button */
+	.mobile-add-button {
+		position: absolute;
+		width: 24px;
+		height: 24px;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: transparent;
+		border: none;
+		color: hsl(var(--muted-foreground));
+		font-size: 20px;
+		font-weight: 300;
+		cursor: pointer;
+		opacity: 0.4;
+		transition: opacity 0.15s ease;
+		padding: 0;
+		line-height: 1;
+	}
+
+	.mobile-add-button:hover,
+	.mobile-add-button:active {
+		opacity: 0.7;
 	}
 
 	.upload-error {

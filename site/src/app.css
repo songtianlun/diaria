@@ -211,14 +211,14 @@
 	outline: none;
 }
 
-/* Placeholder */
-.tiptap-editor-content p.is-editor-empty:first-child::before {
+/* Placeholder - show on current empty paragraph */
+.tiptap-editor-content p.is-empty.has-focus::before {
 	content: attr(data-placeholder);
 	float: left;
 	color: hsl(var(--muted-foreground));
 	pointer-events: none;
 	height: 0;
-	opacity: 0.6;
+	opacity: 0.5;
 }
 
 /* Paragraphs */
