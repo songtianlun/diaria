@@ -106,7 +106,7 @@
 	<header class="glass border-b border-border/50 sticky top-0 z-20">
 		<div class="max-w-3xl mx-auto px-4 h-11">
 			<div class="flex items-center justify-between h-full">
-				<a href="/diary" class="text-lg font-semibold text-foreground hover:text-primary transition-colors">
+				<a href="/" class="text-lg font-semibold text-foreground hover:text-primary transition-colors">
 					Diaria
 				</a>
 
