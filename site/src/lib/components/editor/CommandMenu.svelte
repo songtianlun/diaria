@@ -83,6 +83,34 @@
 		min-width: 200px;
 		max-height: 340px;
 		overflow-y: auto;
+		animation: menuEnter 0.15s ease-out;
+		transform-origin: top left;
+	}
+
+	@keyframes menuEnter {
+		from {
+			opacity: 0;
+			transform: scale(0.95) translateY(-4px);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1) translateY(0);
+		}
+	}
+
+	:global(.menu-exit) .command-menu {
+		animation: menuExit 0.1s ease-in forwards;
+	}
+
+	@keyframes menuExit {
+		from {
+			opacity: 1;
+			transform: scale(1) translateY(0);
+		}
+		to {
+			opacity: 0;
+			transform: scale(0.95) translateY(-4px);
+		}
 	}
 
 	.no-results {

@@ -53,14 +53,29 @@ function updatePosition() {
 }
 
 function cleanup() {
-	if (state.component) {
-		unmount(state.component);
-		state.component = null;
+	if (state.container) {
+		// Add exit animation class
+		state.container.classList.add('menu-exit');
+
+		// Wait for animation to complete before removing
+		setTimeout(() => {
+			if (state.component) {
+				unmount(state.component);
+				state.component = null;
+			}
+			state.container?.remove();
+			state.container = null;
+			state.props = null;
+			state.selectedIndex = 0;
+		}, 100); // Match the menuExit animation duration
+	} else {
+		if (state.component) {
+			unmount(state.component);
+			state.component = null;
+		}
+		state.props = null;
+		state.selectedIndex = 0;
 	}
-	state.container?.remove();
-	state.container = null;
-	state.props = null;
-	state.selectedIndex = 0;
 }
 
 export const suggestionRenderer = {
