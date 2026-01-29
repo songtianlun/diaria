@@ -89,6 +89,26 @@ export async function getDatesWithDiaries(start: string, end: string): Promise<s
 }
 
 /**
+ * Get recent diaries
+ */
+export async function getRecentDiaries(limit: number = 5): Promise<Array<{ date: string; content: string }>> {
+	try {
+		const records = await pb.collection('diaries').getList(1, limit, {
+			sort: '-date',
+			fields: 'date,content'
+		});
+
+		return records.items.map((item: any) => ({
+			date: item.date.split(' ')[0],
+			content: item.content || ''
+		}));
+	} catch (error) {
+		console.error('Error fetching recent diaries:', error);
+		return [];
+	}
+}
+
+/**
  * Search diaries
  */
 export async function searchDiaries(query: string) {
