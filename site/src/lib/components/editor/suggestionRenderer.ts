@@ -69,7 +69,7 @@ export const suggestionRenderer = {
 		state.selectedIndex = 0;
 
 		state.container = document.createElement('div');
-		state.container.style.position = 'absolute';
+		state.container.style.position = 'fixed';
 		state.container.style.zIndex = '1000';
 		document.body.appendChild(state.container);
 
