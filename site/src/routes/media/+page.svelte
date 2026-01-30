@@ -288,27 +288,27 @@
 				{#if !showDeleteConfirm}
 					<button
 						on:click={() => showDeleteConfirm = true}
-						class="px-4 py-2 text-sm text-destructive hover:bg-destructive/10 rounded-lg transition-colors"
+						class="px-4 py-2 text-sm text-red-600 border border-red-500 hover:bg-red-50 rounded-lg transition-colors font-medium"
 					>
 						Delete
 					</button>
 				{:else}
-					<div class="flex items-center gap-2">
+					<div class="flex items-center gap-3">
 						{#if selectedMedia.expand?.diary && selectedMedia.expand.diary.length > 0}
-							<span class="text-xs text-destructive">This media is linked to {selectedMedia.expand.diary.length} diary(s). Delete anyway?</span>
+							<span class="text-sm text-red-600 font-medium">This media is linked to {selectedMedia.expand.diary.length} diary(s). Delete anyway?</span>
 						{:else}
-							<span class="text-xs text-muted-foreground">Confirm delete?</span>
+							<span class="text-sm text-red-600 font-medium">Confirm delete?</span>
 						{/if}
 						<button
 							on:click={handleDelete}
 							disabled={deleting}
-							class="px-3 py-1.5 text-sm bg-destructive text-destructive-foreground rounded-lg hover:opacity-90 disabled:opacity-50 transition-colors"
+							class="px-4 py-2 text-sm text-red-600 border border-red-500 hover:bg-red-50 disabled:opacity-50 rounded-lg transition-colors font-medium"
 						>
 							{deleting ? 'Deleting...' : 'Confirm'}
 						</button>
 						<button
 							on:click={() => showDeleteConfirm = false}
-							class="px-3 py-1.5 text-sm hover:bg-muted/50 rounded-lg transition-colors"
+							class="px-4 py-2 text-sm border border-border hover:bg-muted/50 rounded-lg transition-colors font-medium"
 						>
 							Cancel
 						</button>
@@ -316,7 +316,7 @@
 				{/if}
 				<button
 					on:click={closeModal}
-					class="px-4 py-2 text-sm bg-muted hover:bg-muted/80 rounded-lg transition-colors"
+					class="px-4 py-2 text-sm bg-muted hover:bg-muted/80 rounded-lg transition-colors border border-border/50"
 				>
 					Close
 				</button>
