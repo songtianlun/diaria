@@ -169,9 +169,9 @@
 									<!-- Overlay -->
 									<div class="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200"></div>
 									<!-- Diary indicator -->
-									{#if media.expand?.diary}
+									{#if media.expand?.diary && media.expand.diary.length > 0}
 										<div class="absolute bottom-2 left-2 px-2 py-0.5 bg-black/60 rounded text-xs text-white">
-											{media.expand.diary.date?.split(' ')[0]}
+											{media.expand.diary[0].date?.split(' ')[0]}{media.expand.diary.length > 1 ? ` +${media.expand.diary.length - 1}` : ''}
 										</div>
 									{/if}
 								</button>
@@ -260,15 +260,19 @@
 						</span>
 					</div>
 
-					{#if selectedMedia.expand?.diary}
-						<div class="flex items-center justify-between py-2 border-b border-border/30">
-							<span class="text-muted-foreground">Linked Diary</span>
-							<button
-								on:click={() => goToDiary(selectedMedia!.expand!.diary!.date.split(' ')[0])}
-								class="text-primary hover:underline"
-							>
-								{selectedMedia.expand.diary.date?.split(' ')[0]}
-							</button>
+					{#if selectedMedia.expand?.diary && selectedMedia.expand.diary.length > 0}
+						<div class="py-2 border-b border-border/30">
+							<span class="text-muted-foreground">Linked Diaries</span>
+							<div class="flex flex-wrap gap-2 mt-2">
+								{#each selectedMedia.expand.diary as diary}
+									<button
+										on:click={() => goToDiary(diary.date.split(' ')[0])}
+										class="px-2 py-1 text-sm bg-primary/10 text-primary rounded hover:bg-primary/20 transition-colors"
+									>
+										{diary.date?.split(' ')[0]}
+									</button>
+								{/each}
+							</div>
 						</div>
 					{:else}
 						<div class="flex items-center justify-between py-2 border-b border-border/30">
@@ -290,8 +294,8 @@
 					</button>
 				{:else}
 					<div class="flex items-center gap-2">
-						{#if selectedMedia.expand?.diary}
-							<span class="text-xs text-destructive">This media is linked to a diary. Delete anyway?</span>
+						{#if selectedMedia.expand?.diary && selectedMedia.expand.diary.length > 0}
+							<span class="text-xs text-destructive">This media is linked to {selectedMedia.expand.diary.length} diary(s). Delete anyway?</span>
 						{:else}
 							<span class="text-xs text-muted-foreground">Confirm delete?</span>
 						{/if}

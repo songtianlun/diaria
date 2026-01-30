@@ -2,7 +2,7 @@ import { pb, type Media, type Diary } from './client';
 
 export interface MediaWithDiary extends Media {
 	expand?: {
-		diary?: Diary;
+		diary?: Diary[];
 	};
 }
 
@@ -45,11 +45,43 @@ export async function getMediaById(id: string): Promise<MediaWithDiary | null> {
 }
 
 /**
- * Update media diary association
+ * Add diary association to media (supports multiple diaries)
+ */
+export async function addMediaDiary(mediaId: string, diaryId: string): Promise<boolean> {
+	try {
+		// Get current media to check existing diary associations
+		const media = await pb.collection('media').getOne<Media>(mediaId);
+
+		// Handle both old format (string) and new format (array)
+		let currentDiaries: string[] = [];
+		if (Array.isArray(media.diary)) {
+			currentDiaries = media.diary;
+		} else if (typeof media.diary === 'string' && media.diary) {
+			currentDiaries = [media.diary];
+		}
+
+		// Check if already associated
+		if (currentDiaries.includes(diaryId)) {
+			return true;
+		}
+
+		// Add new diary to the list
+		await pb.collection('media').update(mediaId, {
+			diary: [...currentDiaries, diaryId]
+		});
+		return true;
+	} catch (error) {
+		console.error('Error adding diary to media:', error);
+		return false;
+	}
+}
+
+/**
+ * Update media diary association (replace all)
  */
 export async function updateMediaDiary(mediaId: string, diaryId: string): Promise<boolean> {
 	try {
-		await pb.collection('media').update(mediaId, { diary: diaryId });
+		await pb.collection('media').update(mediaId, { diary: [diaryId] });
 		return true;
 	} catch (error) {
 		console.error('Error updating media:', error);

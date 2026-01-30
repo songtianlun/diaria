@@ -16,8 +16,11 @@
 	import { common, createLowlight } from 'lowlight';
 	import { uploadImage, getMediaUrl } from '$lib/utils/uploadImage';
 	import { SlashCommands } from './SlashCommands';
-	import { getSuggestionItems, setImageUploadTrigger } from './commands';
+	import { getSuggestionItems, setImageUploadTrigger, setGalleryPickerTrigger } from './commands';
 	import { suggestionRenderer, showCommandMenu } from './suggestionRenderer';
+	import MediaPicker from './MediaPicker.svelte';
+	import { getMediaFileUrl, addMediaDiary } from '$lib/api/media';
+	import type { MediaWithDiary } from '$lib/api/media';
 
 	export let content = '';
 	export let onChange: (value: string) => void = () => {};
@@ -29,6 +32,7 @@
 	let fileInput: HTMLInputElement;
 	let isUploading = false;
 	let uploadError = '';
+	let showMediaPicker = false;
 
 	// Add button state
 	let showAddButton = false;
@@ -126,6 +130,32 @@
 		fileInput?.click();
 	}
 
+	// Handle gallery picker trigger
+	function handleGalleryPicker() {
+		showMediaPicker = true;
+	}
+
+	// Handle media selection from gallery
+	async function handleMediaSelect(media: MediaWithDiary) {
+		if (!editor) return;
+
+		const url = getMediaFileUrl(media);
+		editor.chain().focus().setImage({ src: url }).run();
+
+		// Associate media with current diary
+		if (diaryDate && media.id) {
+			try {
+				const { getOrCreateDiaryId } = await import('$lib/utils/uploadImage');
+				const diaryId = await getOrCreateDiaryId(diaryDate);
+				if (diaryId) {
+					await addMediaDiary(media.id, diaryId);
+				}
+			} catch (error) {
+				console.error('Failed to associate media with diary:', error);
+			}
+		}
+	}
+
 	function handleFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
@@ -172,6 +202,8 @@
 	onMount(() => {
 		// Register image upload trigger for slash commands
 		setImageUploadTrigger(handleSlashImage);
+		// Register gallery picker trigger for slash commands
+		setGalleryPickerTrigger(handleGalleryPicker);
 
 		editor = new Editor({
 			element: editorElement,
@@ -240,6 +272,8 @@
 	onDestroy(() => {
 		// Cleanup image upload trigger
 		setImageUploadTrigger(null);
+		// Cleanup gallery picker trigger
+		setGalleryPickerTrigger(null);
 		editor?.destroy();
 	});
 
@@ -279,6 +313,13 @@
 		<div class="upload-loading">Uploading...</div>
 	{/if}
 </div>
+
+{#if showMediaPicker}
+	<MediaPicker
+		onSelect={handleMediaSelect}
+		onClose={() => showMediaPicker = false}
+	/>
+{/if}
 
 <style>
 	.tiptap-editor {

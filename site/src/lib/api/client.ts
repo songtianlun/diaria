@@ -39,7 +39,7 @@ export interface Media {
 	file: string;
 	name?: string;
 	alt?: string;
-	diary?: string;
+	diary?: string[];
 	owner: string;
 	created?: string;
 	updated?: string;

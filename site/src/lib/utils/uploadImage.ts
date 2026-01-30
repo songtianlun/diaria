@@ -4,7 +4,7 @@ import type { Media, UploadProgress } from '$lib/api/client';
 /**
  * Get or create diary ID for a given date
  */
-async function getOrCreateDiaryId(date: string): Promise<string | undefined> {
+export async function getOrCreateDiaryId(date: string): Promise<string | undefined> {
 	try {
 		// Try to find existing diary
 		const response = await fetch(`/api/diaries/by-date/${date}`, {
@@ -81,6 +81,7 @@ export async function uploadImage(file: File, options: UploadOptions = {}): Prom
 		formData.append('alt', alt);
 	}
 
+	// For multi-select relation, PocketBase expects the field name with array notation
 	if (resolvedDiaryId) {
 		formData.append('diary', resolvedDiaryId);
 	}
