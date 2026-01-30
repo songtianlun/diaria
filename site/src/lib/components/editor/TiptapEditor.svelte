@@ -3,7 +3,7 @@
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Placeholder from '@tiptap/extension-placeholder';
-	import Image from '@tiptap/extension-image';
+	import { ImageExtension } from './ImageNodeView';
 	import Link from '@tiptap/extension-link';
 	import Underline from '@tiptap/extension-underline';
 	import Highlight from '@tiptap/extension-highlight';
@@ -30,7 +30,6 @@
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
 	let fileInput: HTMLInputElement;
-	let isUploading = false;
 	let uploadError = '';
 	let showMediaPicker = false;
 
@@ -58,30 +57,47 @@
 		return null;
 	}
 
-	// Handle image upload
-	async function handleImageUpload(file: File): Promise<string | null> {
-		if (isUploading) return null;
+	// Generate unique placeholder ID
+	function generatePlaceholderId(): string {
+		return `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+	}
+
+	// Handle image upload with placeholder
+	async function handleImageUploadWithPlaceholder(file: File): Promise<void> {
+		if (!editor) return;
 
 		// Validate file
 		const validationError = validateImageFile(file);
 		if (validationError) {
 			uploadError = validationError;
 			setTimeout(() => (uploadError = ''), 3000);
-			return null;
+			return;
 		}
 
-		isUploading = true;
+		const placeholderId = generatePlaceholderId();
+
+		// Insert placeholder with preview
+		editor.chain().focus().setImagePlaceholder({ id: placeholderId, file }).run();
+
 		uploadError = '';
+
 		try {
 			const media = await uploadImage(file, { diaryDate });
-			return getMediaUrl(media);
+			const url = getMediaUrl(media);
+
+			// Replace placeholder with actual image
+			editor.commands.replacePlaceholderWithImage({
+				id: placeholderId,
+				src: url,
+				alt: file.name,
+			});
 		} catch (error) {
 			console.error('Image upload failed:', error);
 			uploadError = 'Image upload failed, please try again';
 			setTimeout(() => (uploadError = ''), 3000);
-			return null;
-		} finally {
-			isUploading = false;
+
+			// Remove placeholder on error
+			editor.commands.removePlaceholder(placeholderId);
 		}
 	}
 
@@ -95,11 +111,7 @@
 				event.preventDefault();
 				const file = item.getAsFile();
 				if (file) {
-					handleImageUpload(file).then((url) => {
-						if (url && editor) {
-							editor.chain().focus().setImage({ src: url }).run();
-						}
-					});
+					handleImageUploadWithPlaceholder(file);
 				}
 				return true;
 			}
@@ -115,11 +127,7 @@
 		const file = files[0];
 		if (file.type.startsWith('image/')) {
 			event.preventDefault();
-			handleImageUpload(file).then((url) => {
-				if (url && editor) {
-					editor.chain().focus().setImage({ src: url }).run();
-				}
-			});
+			handleImageUploadWithPlaceholder(file);
 			return true;
 		}
 		return false;
@@ -160,11 +168,7 @@
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (file) {
-			handleImageUpload(file).then((url) => {
-				if (url && editor) {
-					editor.chain().focus().setImage({ src: url }).run();
-				}
-			});
+			handleImageUploadWithPlaceholder(file);
 			input.value = '';
 		}
 	}
@@ -220,7 +224,7 @@
 					},
 					showOnlyCurrent: true,
 				}),
-				Image.configure({
+				ImageExtension.configure({
 					inline: false,
 					allowBase64: true,
 				}),
@@ -309,9 +313,6 @@
 	{#if uploadError}
 		<div class="upload-error">{uploadError}</div>
 	{/if}
-	{#if isUploading}
-		<div class="upload-loading">Uploading...</div>
-	{/if}
 </div>
 
 {#if showMediaPicker}
@@ -366,18 +367,6 @@
 		font-size: 14px;
 		z-index: 1000;
 		animation: slideIn 0.2s ease;
-	}
-
-	.upload-loading {
-		position: fixed;
-		bottom: 20px;
-		right: 20px;
-		background: hsl(var(--primary, 220 14% 20%));
-		color: white;
-		padding: 12px 16px;
-		border-radius: 8px;
-		font-size: 14px;
-		z-index: 1000;
 	}
 
 	@keyframes slideIn {

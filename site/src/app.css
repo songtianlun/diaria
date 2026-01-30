@@ -389,6 +389,146 @@
 	outline-offset: 2px;
 }
 
+/* Image wrapper selected state (for NodeView) */
+.tiptap-editor-content .image-wrapper.ProseMirror-selectednode img {
+	outline: 2px solid hsl(var(--primary));
+	outline-offset: 2px;
+}
+
+/* Image uploading state - shows blurred preview with overlay */
+.tiptap-editor-content img[data-uploading="true"] {
+	opacity: 0.5;
+	filter: blur(3px);
+	animation: pulse-upload 1.5s ease-in-out infinite;
+}
+
+/* Image loading state - placeholder background */
+.tiptap-editor-content img[data-loading="true"] {
+	min-height: 200px;
+	min-width: 300px;
+	background: linear-gradient(
+		90deg,
+		hsl(var(--muted)) 0%,
+		hsl(var(--muted-foreground) / 0.1) 50%,
+		hsl(var(--muted)) 100%
+	);
+	background-size: 200% 100%;
+	animation: loading-shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-upload {
+	0%, 100% {
+		opacity: 0.5;
+	}
+	50% {
+		opacity: 0.3;
+	}
+}
+
+@keyframes loading-shimmer {
+	0% {
+		background-position: 200% 0;
+	}
+	100% {
+		background-position: -200% 0;
+	}
+}
+
+/* Image wrapper styles for NodeView */
+.tiptap-editor-content .image-wrapper {
+	position: relative;
+	display: inline-block;
+	max-width: 100%;
+	margin: 1em 0;
+}
+
+.tiptap-editor-content .image-wrapper img {
+	max-width: 100%;
+	height: auto;
+	border-radius: 8px;
+	box-shadow: 0 2px 8px hsl(var(--foreground) / 0.1);
+	margin: 0;
+}
+
+/* Uploading state */
+.tiptap-editor-content .image-wrapper.uploading img {
+	opacity: 0.4;
+	filter: blur(2px);
+}
+
+.tiptap-editor-content .upload-overlay {
+	position: absolute;
+	inset: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background: hsl(var(--background) / 0.7);
+	border-radius: 8px;
+	gap: 12px;
+}
+
+.tiptap-editor-content .upload-spinner {
+	width: 32px;
+	height: 32px;
+	border: 3px solid hsl(var(--muted));
+	border-top-color: hsl(var(--primary));
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+.tiptap-editor-content .upload-text {
+	font-size: 14px;
+	color: hsl(var(--muted-foreground));
+	font-weight: 500;
+}
+
+/* Loading placeholder */
+.tiptap-editor-content .image-loading-placeholder {
+	min-height: 200px;
+	min-width: 300px;
+	max-width: 100%;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background: hsl(var(--muted));
+	border-radius: 8px;
+	gap: 12px;
+}
+
+.tiptap-editor-content .loading-spinner {
+	width: 28px;
+	height: 28px;
+	border: 3px solid hsl(var(--muted-foreground) / 0.3);
+	border-top-color: hsl(var(--muted-foreground));
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+}
+
+.tiptap-editor-content .loading-text {
+	font-size: 13px;
+	color: hsl(var(--muted-foreground));
+}
+
+.tiptap-editor-content .image-loading-placeholder.error {
+	background: hsl(0 50% 95%);
+}
+
+.tiptap-editor-content .image-loading-placeholder.error .loading-spinner {
+	display: none;
+}
+
+.tiptap-editor-content .image-loading-placeholder.error .loading-text {
+	color: hsl(0 70% 45%);
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
 /* Horizontal Rule */
 .tiptap-editor-content hr {
 	border: none;
