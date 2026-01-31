@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/songtianlun/diaria/internal/api"
+	"github.com/songtianlun/diaria/internal/embedding"
 	_ "github.com/songtianlun/diaria/internal/migrations"
 	"github.com/songtianlun/diaria/internal/static"
 
@@ -141,9 +142,21 @@ func main() {
 			log.Printf("Data directory: %s", absDataDir)
 		}
 
+		// Initialize vector database and embedding service
+		vectorDB, err := embedding.NewVectorDB(app.DataDir())
+		if err != nil {
+			log.Printf("Warning: Failed to initialize vector database: %v", err)
+		}
+
+		var embeddingService *embedding.EmbeddingService
+		if vectorDB != nil {
+			embeddingService = embedding.NewEmbeddingService(app, vectorDB)
+		}
+
 		// Register API routes
 		api.RegisterDiaryRoutes(app, e)
 		api.RegisterSettingsRoutes(app, e)
+		api.RegisterAIRoutes(app, e, embeddingService)
 		api.RegisterPublicRoutes(app, e)
 		api.RegisterVersionRoutes(e, Version, Name)
 

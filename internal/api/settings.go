@@ -10,6 +10,9 @@ import (
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/models"
+
+	"github.com/songtianlun/diaria/internal/config"
+	"github.com/songtianlun/diaria/internal/logger"
 )
 
 // generateToken generates a random 32-character hex token
@@ -23,6 +26,8 @@ func generateToken() (string, error) {
 
 // RegisterSettingsRoutes registers settings-related API endpoints
 func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
+	configService := config.NewConfigService(app)
+
 	// Get API token status and value
 	e.Router.GET("/api/settings/api-token", func(c echo.Context) error {
 		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
@@ -32,17 +37,16 @@ func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 
 		userId := authRecord.Id
 
-		// Find existing token for this user
-		record, err := app.Dao().FindFirstRecordByFilter(
-			"api_tokens",
-			"owner = {:owner}",
-			map[string]any{
-				"owner": userId,
-			},
-		)
-
+		token, err := configService.GetString(userId, "api.token")
 		if err != nil {
-			// No token exists yet
+			logger.Debug("[GET /api/settings/api-token] error getting token: %v", err)
+		}
+		enabled, err := configService.GetBool(userId, "api.enabled")
+		if err != nil {
+			logger.Debug("[GET /api/settings/api-token] error getting enabled: %v", err)
+		}
+
+		if token == "" {
 			return c.JSON(http.StatusOK, map[string]any{
 				"exists":  false,
 				"enabled": false,
@@ -52,8 +56,8 @@ func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 
 		return c.JSON(http.StatusOK, map[string]any{
 			"exists":  true,
-			"enabled": record.GetBool("enabled"),
-			"token":   record.GetString("token"),
+			"enabled": enabled,
+			"token":   token,
 		})
 	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
 
@@ -66,53 +70,44 @@ func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 
 		userId := authRecord.Id
 
-		// Find existing token for this user
-		record, err := app.Dao().FindFirstRecordByFilter(
-			"api_tokens",
-			"owner = {:owner}",
-			map[string]any{
-				"owner": userId,
-			},
-		)
-
+		token, err := configService.GetString(userId, "api.token")
 		if err != nil {
+			logger.Debug("[POST /api/settings/api-token/toggle] error getting token: %v", err)
+		}
+		enabled, err := configService.GetBool(userId, "api.enabled")
+		if err != nil {
+			logger.Debug("[POST /api/settings/api-token/toggle] error getting enabled: %v", err)
+		}
+
+		if token == "" {
 			// No token exists, create one and enable it
-			token, err := generateToken()
+			newToken, err := generateToken()
 			if err != nil {
 				return apis.NewBadRequestError("Failed to generate token", err)
 			}
 
-			collection, err := app.Dao().FindCollectionByNameOrId("api_tokens")
-			if err != nil {
-				return apis.NewBadRequestError("Failed to find api_tokens collection", err)
-			}
-
-			record = models.NewRecord(collection)
-			record.Set("token", token)
-			record.Set("enabled", true)
-			record.Set("owner", userId)
-
-			if err := app.Dao().SaveRecord(record); err != nil {
+			if err := configService.Set(userId, "api.token", newToken); err != nil {
 				return apis.NewBadRequestError("Failed to save token", err)
+			}
+			if err := configService.Set(userId, "api.enabled", true); err != nil {
+				return apis.NewBadRequestError("Failed to save enabled status", err)
 			}
 
 			return c.JSON(http.StatusOK, map[string]any{
 				"enabled": true,
-				"token":   token,
+				"token":   newToken,
 			})
 		}
 
 		// Toggle existing token
-		newEnabled := !record.GetBool("enabled")
-		record.Set("enabled", newEnabled)
-
-		if err := app.Dao().SaveRecord(record); err != nil {
+		newEnabled := !enabled
+		if err := configService.Set(userId, "api.enabled", newEnabled); err != nil {
 			return apis.NewBadRequestError("Failed to update token", err)
 		}
 
 		return c.JSON(http.StatusOK, map[string]any{
 			"enabled": newEnabled,
-			"token":   record.GetString("token"),
+			"token":   token,
 		})
 	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
 
@@ -126,43 +121,163 @@ func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 		userId := authRecord.Id
 
 		// Generate new token
-		token, err := generateToken()
+		newToken, err := generateToken()
 		if err != nil {
 			return apis.NewBadRequestError("Failed to generate token", err)
 		}
 
-		// Find existing token for this user
-		record, err := app.Dao().FindFirstRecordByFilter(
-			"api_tokens",
-			"owner = {:owner}",
-			map[string]any{
-				"owner": userId,
-			},
-		)
-
-		if err != nil {
-			// No token exists, create one
-			collection, err := app.Dao().FindCollectionByNameOrId("api_tokens")
-			if err != nil {
-				return apis.NewBadRequestError("Failed to find api_tokens collection", err)
-			}
-
-			record = models.NewRecord(collection)
-			record.Set("token", token)
-			record.Set("enabled", true)
-			record.Set("owner", userId)
-		} else {
-			// Update existing token
-			record.Set("token", token)
-		}
-
-		if err := app.Dao().SaveRecord(record); err != nil {
+		// Save new token
+		if err := configService.Set(userId, "api.token", newToken); err != nil {
 			return apis.NewBadRequestError("Failed to save token", err)
 		}
 
+		// Ensure enabled is set (default to true for reset)
+		enabled, err := configService.GetBool(userId, "api.enabled")
+		if err != nil {
+			logger.Debug("[POST /api/settings/api-token/reset] error getting enabled: %v", err)
+		}
+		if !enabled {
+			if err := configService.Set(userId, "api.enabled", true); err != nil {
+				logger.Debug("[POST /api/settings/api-token/reset] error setting enabled: %v", err)
+			}
+			enabled = true
+		}
+
 		return c.JSON(http.StatusOK, map[string]any{
-			"enabled": record.GetBool("enabled"),
-			"token":   token,
+			"enabled": enabled,
+			"token":   newToken,
+		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Get all settings (new v1 API)
+	e.Router.GET("/api/v1/settings", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		userId := authRecord.Id
+
+		settings, err := configService.GetBatch(userId)
+		if err != nil {
+			return apis.NewBadRequestError("Failed to get settings", err)
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{
+			"settings": settings,
+		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Batch update settings (new v1 API)
+	e.Router.PUT("/api/v1/settings/batch", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		userId := authRecord.Id
+
+		var body struct {
+			Settings map[string]any `json:"settings"`
+		}
+		if err := c.Bind(&body); err != nil {
+			return apis.NewBadRequestError("Invalid request body", err)
+		}
+
+		// Validate keys against registry
+		for key := range body.Settings {
+			if _, ok := config.GetConfigMeta(key); !ok {
+				return apis.NewBadRequestError("Unknown setting key: "+key, nil)
+			}
+		}
+
+		if err := configService.SetBatch(userId, body.Settings); err != nil {
+			return apis.NewBadRequestError("Failed to save settings", err)
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{
+			"success": true,
+		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Get single setting by key
+	e.Router.GET("/api/v1/settings/:key", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		userId := authRecord.Id
+		key := c.PathParam("key")
+
+		// Validate key against registry
+		if _, ok := config.GetConfigMeta(key); !ok {
+			return apis.NewBadRequestError("Unknown setting key: "+key, nil)
+		}
+
+		value, err := configService.Get(userId, key)
+		if err != nil {
+			return apis.NewBadRequestError("Failed to get setting", err)
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{
+			"key":   key,
+			"value": value,
+		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Update single setting by key
+	e.Router.PUT("/api/v1/settings/:key", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		userId := authRecord.Id
+		key := c.PathParam("key")
+
+		// Validate key against registry
+		if _, ok := config.GetConfigMeta(key); !ok {
+			return apis.NewBadRequestError("Unknown setting key: "+key, nil)
+		}
+
+		var body struct {
+			Value any `json:"value"`
+		}
+		if err := c.Bind(&body); err != nil {
+			return apis.NewBadRequestError("Invalid request body", err)
+		}
+
+		if err := configService.Set(userId, key, body.Value); err != nil {
+			return apis.NewBadRequestError("Failed to save setting", err)
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{
+			"success": true,
+		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Delete single setting by key
+	e.Router.DELETE("/api/v1/settings/:key", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		userId := authRecord.Id
+		key := c.PathParam("key")
+
+		// Validate key against registry
+		if _, ok := config.GetConfigMeta(key); !ok {
+			return apis.NewBadRequestError("Unknown setting key: "+key, nil)
+		}
+
+		if err := configService.Delete(userId, key); err != nil {
+			return apis.NewBadRequestError("Failed to delete setting", err)
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{
+			"success": true,
 		})
 	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
 }
