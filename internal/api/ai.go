@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -14,6 +16,7 @@ import (
 	"github.com/pocketbase/pocketbase/models"
 
 	"github.com/songtianlun/diaria/internal/config"
+	"github.com/songtianlun/diaria/internal/embedding"
 	"github.com/songtianlun/diaria/internal/logger"
 )
 
@@ -32,7 +35,7 @@ type ModelsResponse struct {
 }
 
 // RegisterAIRoutes registers AI-related API endpoints
-func RegisterAIRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
+func RegisterAIRoutes(app *pocketbase.PocketBase, e *core.ServeEvent, embeddingService *embedding.EmbeddingService) {
 	configService := config.NewConfigService(app)
 
 	// Get AI settings
@@ -131,6 +134,32 @@ func RegisterAIRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 		return c.JSON(http.StatusOK, map[string]any{
 			"models": models,
 		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Build all vectors for user's diaries
+	e.Router.POST("/api/ai/vectors/build", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		if embeddingService == nil {
+			return apis.NewBadRequestError("Embedding service not initialized", nil)
+		}
+
+		userId := authRecord.Id
+
+		// Use a longer timeout for vector building
+		ctx, cancel := context.WithTimeout(c.Request().Context(), 10*time.Minute)
+		defer cancel()
+
+		result, err := embeddingService.BuildAllVectors(ctx, userId)
+		if err != nil {
+			logger.Error("[POST /api/ai/vectors/build] error building vectors: %v", err)
+			return apis.NewBadRequestError("Failed to build vectors: "+err.Error(), nil)
+		}
+
+		return c.JSON(http.StatusOK, result)
 	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
 }
 

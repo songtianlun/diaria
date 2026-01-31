@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { isAuthenticated } from '$lib/api/client';
 	import { getApiToken, toggleApiToken, resetApiToken, type ApiTokenStatus } from '$lib/api/settings';
-	import { getAISettings, saveAISettings, fetchModels, type AISettings, type ModelInfo } from '$lib/api/ai';
+	import { getAISettings, saveAISettings, fetchModels, buildVectors, type AISettings, type ModelInfo, type BuildVectorsResult } from '$lib/api/ai';
 
 	let loading = true;
 	let tokenStatus: ApiTokenStatus = { exists: false, enabled: false, token: '' };
@@ -25,6 +25,11 @@
 	let models: ModelInfo[] = [];
 	let fetchingModels = false;
 	let modelsError = '';
+
+	// Vector building
+	let buildingVectors = false;
+	let buildResult: BuildVectorsResult | null = null;
+	let buildError = '';
 
 	async function loadTokenStatus() {
 		tokenStatus = await getApiToken();
@@ -119,6 +124,24 @@
 			aiError = e instanceof Error ? e.message : 'Failed to save AI settings';
 		}
 		aiSaving = false;
+	}
+
+	async function handleBuildVectors() {
+		if (!aiSettings.enabled) {
+			buildError = 'Please enable AI features first';
+			return;
+		}
+
+		buildingVectors = true;
+		buildError = '';
+		buildResult = null;
+
+		try {
+			buildResult = await buildVectors();
+		} catch (e) {
+			buildError = e instanceof Error ? e.message : 'Failed to build vectors';
+		}
+		buildingVectors = false;
 	}
 
 	// Check if AI can be enabled
@@ -383,6 +406,67 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 							</button>
 						</div>
 					</div>
+
+					<!-- Build Vectors -->
+					{#if aiSettings.enabled}
+						<div class="py-4 border-b border-border/50">
+							<div class="flex items-center justify-between">
+								<div>
+									<div class="font-medium text-foreground">Build Vector Index</div>
+									<div class="text-sm text-muted-foreground">
+										Generate embeddings for all diary entries
+									</div>
+								</div>
+								<button
+									on:click={handleBuildVectors}
+									disabled={buildingVectors}
+									class="px-4 py-2 text-sm bg-muted hover:bg-muted/80 rounded-lg transition-colors duration-200 disabled:opacity-50 flex items-center gap-2"
+								>
+									{#if buildingVectors}
+										<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+										</svg>
+										Building...
+									{:else}
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+										</svg>
+										Build All
+									{/if}
+								</button>
+							</div>
+
+							{#if buildError}
+								<div class="mt-3 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
+									{buildError}
+								</div>
+							{/if}
+
+							{#if buildResult}
+								<div class="mt-3 p-3 bg-muted rounded-lg text-sm">
+									<div class="font-medium text-foreground mb-2">Build Result</div>
+									<div class="space-y-1 text-muted-foreground">
+										<div>Total diaries: {buildResult.total}</div>
+										<div class="text-green-600">Success: {buildResult.success}</div>
+										{#if buildResult.failed > 0}
+											<div class="text-destructive">Failed: {buildResult.failed}</div>
+										{/if}
+									</div>
+									{#if buildResult.error_details && buildResult.error_details.length > 0}
+										<div class="mt-2 pt-2 border-t border-border/50">
+											<div class="font-medium text-destructive mb-1">Errors:</div>
+											<div class="text-xs text-muted-foreground space-y-1 max-h-32 overflow-y-auto">
+												{#each buildResult.error_details as error}
+													<div>{error}</div>
+												{/each}
+											</div>
+										</div>
+									{/if}
+								</div>
+							{/if}
+						</div>
+					{/if}
 
 					<!-- Save Button -->
 					<div class="pt-4">

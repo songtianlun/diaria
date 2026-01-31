@@ -1,0 +1,244 @@
+package embedding
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"strings"
+	"time"
+
+	chromem "github.com/philippgille/chromem-go"
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/models"
+	"github.com/songtianlun/diaria/internal/config"
+	"github.com/songtianlun/diaria/internal/logger"
+)
+
+// EmbeddingService handles diary embedding operations
+type EmbeddingService struct {
+	app           *pocketbase.PocketBase
+	vectorDB      *VectorDB
+	configService *config.ConfigService
+}
+
+// BuildResult represents the result of a build operation
+type BuildResult struct {
+	Success      int      `json:"success"`
+	Failed       int      `json:"failed"`
+	Total        int      `json:"total"`
+	Errors       []string `json:"errors,omitempty"`
+	ErrorDetails []string `json:"error_details,omitempty"`
+}
+
+// EmbeddingRequest represents a request to the embedding API
+type EmbeddingRequest struct {
+	Input string `json:"input"`
+	Model string `json:"model"`
+}
+
+// EmbeddingResponse represents the response from the embedding API
+type EmbeddingResponse struct {
+	Object string `json:"object"`
+	Data   []struct {
+		Object    string    `json:"object"`
+		Index     int       `json:"index"`
+		Embedding []float32 `json:"embedding"`
+	} `json:"data"`
+	Model string `json:"model"`
+	Usage struct {
+		PromptTokens int `json:"prompt_tokens"`
+		TotalTokens  int `json:"total_tokens"`
+	} `json:"usage"`
+}
+
+// NewEmbeddingService creates a new EmbeddingService
+func NewEmbeddingService(app *pocketbase.PocketBase, vectorDB *VectorDB) *EmbeddingService {
+	return &EmbeddingService{
+		app:           app,
+		vectorDB:      vectorDB,
+		configService: config.NewConfigService(app),
+	}
+}
+
+// createEmbeddingFunc creates an embedding function for the given user's configuration
+func (s *EmbeddingService) createEmbeddingFunc(userID string) (chromem.EmbeddingFunc, error) {
+	apiKey, err := s.configService.GetString(userID, "ai.api_key")
+	if err != nil || apiKey == "" {
+		return nil, fmt.Errorf("AI API key not configured")
+	}
+
+	baseURL, err := s.configService.GetString(userID, "ai.base_url")
+	if err != nil || baseURL == "" {
+		return nil, fmt.Errorf("AI base URL not configured")
+	}
+
+	embeddingModel, err := s.configService.GetString(userID, "ai.embedding_model")
+	if err != nil || embeddingModel == "" {
+		return nil, fmt.Errorf("embedding model not configured")
+	}
+
+	// Normalize base URL
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
+	return func(ctx context.Context, text string) ([]float32, error) {
+		return s.generateEmbedding(ctx, baseURL, apiKey, embeddingModel, text)
+	}, nil
+}
+
+// generateEmbedding calls the OpenAI-compatible embedding API
+func (s *EmbeddingService) generateEmbedding(ctx context.Context, baseURL, apiKey, model, text string) ([]float32, error) {
+	url := baseURL + "/v1/embeddings"
+
+	reqBody := EmbeddingRequest{
+		Input: text,
+		Model: model,
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var embResp EmbeddingResponse
+	if err := json.NewDecoder(resp.Body).Decode(&embResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if len(embResp.Data) == 0 {
+		return nil, fmt.Errorf("no embedding data in response")
+	}
+
+	return embResp.Data[0].Embedding, nil
+}
+
+// BuildAllVectors builds vectors for all diaries of a user
+func (s *EmbeddingService) BuildAllVectors(ctx context.Context, userID string) (*BuildResult, error) {
+	logger.Info("[EmbeddingService] starting full vector build for user: %s", userID)
+
+	// Check if AI is enabled
+	enabled, _ := s.configService.GetBool(userID, "ai.enabled")
+	if !enabled {
+		return nil, fmt.Errorf("AI features are not enabled")
+	}
+
+	// Create embedding function
+	embeddingFunc, err := s.createEmbeddingFunc(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create embedding function: %w", err)
+	}
+
+	// Delete existing collection and create a new one
+	if err := s.vectorDB.DeleteCollection(userID); err != nil {
+		logger.Warn("[EmbeddingService] failed to delete existing collection: %v", err)
+	}
+
+	collection, err := s.vectorDB.GetOrCreateCollection(ctx, userID, embeddingFunc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create collection: %w", err)
+	}
+
+	// Get all diaries for the user
+	diaries, err := s.app.Dao().FindRecordsByFilter(
+		"diaries",
+		"owner = {:owner}",
+		"-date",
+		-1, // No limit
+		0,
+		map[string]any{"owner": userID},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch diaries: %w", err)
+	}
+
+	result := &BuildResult{
+		Total:        len(diaries),
+		Errors:       make([]string, 0),
+		ErrorDetails: make([]string, 0),
+	}
+
+	if len(diaries) == 0 {
+		logger.Info("[EmbeddingService] no diaries found for user: %s", userID)
+		return result, nil
+	}
+
+	// Process each diary
+	for _, diary := range diaries {
+		if err := s.processDiary(ctx, collection, diary); err != nil {
+			result.Failed++
+			dateStr := extractDate(diary.GetString("date"))
+			errMsg := fmt.Sprintf("Diary %s: %v", dateStr, err)
+			result.Errors = append(result.Errors, dateStr)
+			result.ErrorDetails = append(result.ErrorDetails, errMsg)
+			logger.Error("[EmbeddingService] %s", errMsg)
+		} else {
+			result.Success++
+		}
+	}
+
+	logger.Info("[EmbeddingService] vector build completed for user %s: %d success, %d failed",
+		userID, result.Success, result.Failed)
+
+	return result, nil
+}
+
+// processDiary processes a single diary entry
+func (s *EmbeddingService) processDiary(ctx context.Context, collection *chromem.Collection, diary *models.Record) error {
+	content := diary.GetString("content")
+	if content == "" {
+		return nil // Skip empty diaries
+	}
+
+	diaryID := diary.GetId()
+	dateStr := extractDate(diary.GetString("date"))
+	mood := diary.GetString("mood")
+	weather := diary.GetString("weather")
+
+	// Create document with metadata
+	doc := chromem.Document{
+		ID:      diaryID,
+		Content: content,
+		Metadata: map[string]string{
+			"date":    dateStr,
+			"mood":    mood,
+			"weather": weather,
+		},
+	}
+
+	// Add document to collection (this will generate the embedding)
+	if err := collection.AddDocument(ctx, doc); err != nil {
+		return fmt.Errorf("failed to add document: %w", err)
+	}
+
+	return nil
+}
+
+// extractDate extracts the date part from a timestamp string
+func extractDate(dateTime string) string {
+	if len(dateTime) >= 10 {
+		return dateTime[:10]
+	}
+	return dateTime
+}

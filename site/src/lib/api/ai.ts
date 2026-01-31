@@ -15,6 +15,14 @@ export interface ModelInfo {
 	owned_by?: string;
 }
 
+export interface BuildVectorsResult {
+	success: number;
+	failed: number;
+	total: number;
+	errors?: string[];
+	error_details?: string[];
+}
+
 /**
  * Get AI settings
  */
@@ -87,4 +95,24 @@ export async function fetchModels(apiKey: string, baseUrl: string): Promise<Mode
 
 	const data = await response.json();
 	return data.models || [];
+}
+
+/**
+ * Build vectors for all diaries
+ */
+export async function buildVectors(): Promise<BuildVectorsResult> {
+	const response = await fetch('/api/ai/vectors/build', {
+		method: 'POST',
+		headers: {
+			'Authorization': `Bearer ${pb.authStore.token}`,
+			'Content-Type': 'application/json'
+		}
+	});
+
+	if (!response.ok) {
+		const data = await response.json();
+		throw new Error(data.message || 'Failed to build vectors');
+	}
+
+	return await response.json();
 }

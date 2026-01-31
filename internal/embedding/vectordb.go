@@ -1,0 +1,76 @@
+package embedding
+
+import (
+	"context"
+	"fmt"
+	"path/filepath"
+	"sync"
+
+	chromem "github.com/philippgille/chromem-go"
+	"github.com/songtianlun/diaria/internal/logger"
+)
+
+const (
+	collectionName = "diaries"
+)
+
+// VectorDB manages the vector database for diary embeddings
+type VectorDB struct {
+	db         *chromem.DB
+	dataDir    string
+	mu         sync.RWMutex
+	collection *chromem.Collection
+}
+
+// NewVectorDB creates a new VectorDB instance
+func NewVectorDB(dataDir string) (*VectorDB, error) {
+	dbPath := filepath.Join(dataDir, "vectors")
+	logger.Debug("[VectorDB] initializing vector database at: %s", dbPath)
+
+	db, err := chromem.NewPersistentDB(dbPath, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create vector database: %w", err)
+	}
+
+	return &VectorDB{
+		db:      db,
+		dataDir: dataDir,
+	}, nil
+}
+
+// GetOrCreateCollection gets or creates a collection for a user
+func (v *VectorDB) GetOrCreateCollection(ctx context.Context, userID string, embeddingFunc chromem.EmbeddingFunc) (*chromem.Collection, error) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	collName := fmt.Sprintf("%s_%s", collectionName, userID)
+
+	// Try to get existing collection
+	collection := v.db.GetCollection(collName, embeddingFunc)
+	if collection != nil {
+		return collection, nil
+	}
+
+	// Create new collection
+	collection, err := v.db.CreateCollection(collName, nil, embeddingFunc)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create collection: %w", err)
+	}
+
+	return collection, nil
+}
+
+// DeleteCollection deletes a user's collection
+func (v *VectorDB) DeleteCollection(userID string) error {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	collName := fmt.Sprintf("%s_%s", collectionName, userID)
+	return v.db.DeleteCollection(collName)
+}
+
+// Close closes the vector database
+func (v *VectorDB) Close() error {
+	// chromem-go doesn't have a Close method, but we keep this for future compatibility
+	return nil
+}
