@@ -131,7 +131,7 @@ func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 		})
 	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
 
-	// Get settings by prefix (new v1 API)
+	// Get all settings (new v1 API)
 	e.Router.GET("/api/v1/settings", func(c echo.Context) error {
 		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
 		if authRecord == nil {
@@ -139,9 +139,8 @@ func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 		}
 
 		userId := authRecord.Id
-		prefix := c.QueryParam("prefix")
 
-		settings, err := configService.GetBatch(userId, prefix)
+		settings, err := configService.GetBatch(userId)
 		if err != nil {
 			return apis.NewBadRequestError("Failed to get settings", err)
 		}

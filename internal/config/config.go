@@ -130,24 +130,15 @@ func (s *ConfigService) Set(userId, key string, value any) error {
 	return s.app.Dao().SaveRecord(record)
 }
 
-// GetBatch retrieves multiple configuration values by prefix
-func (s *ConfigService) GetBatch(userId string, prefix string) (map[string]any, error) {
-	filter := "user = {:user}"
-	params := map[string]any{"user": userId}
-
-	if prefix != "" {
-		// Use prefix with dot to ensure exact prefix matching (e.g., "ai." matches "ai.xxx" but not "ai_other")
-		filter += " && key ~ {:prefix}"
-		params["prefix"] = prefix + ".%"
-	}
-
+// GetBatch retrieves all configuration values for a user
+func (s *ConfigService) GetBatch(userId string) (map[string]any, error) {
 	records, err := s.app.Dao().FindRecordsByFilter(
 		"user_settings",
-		filter,
+		"user = {:user}",
 		"",
 		-1,
 		0,
-		params,
+		map[string]any{"user": userId},
 	)
 
 	if err != nil {
@@ -193,7 +184,9 @@ func (s *ConfigService) Delete(userId, key string) error {
 
 // ValidateTokenAndGetUser validates an API token and returns the user ID
 func (s *ConfigService) ValidateTokenAndGetUser(token string) (string, error) {
-	// Find all api.token records
+	logger.Debug("[ValidateTokenAndGetUser] input token=%s", token)
+
+	// Find the record with matching token
 	records, err := s.app.Dao().FindRecordsByFilter(
 		"user_settings",
 		"key = 'api.token'",
@@ -203,23 +196,32 @@ func (s *ConfigService) ValidateTokenAndGetUser(token string) (string, error) {
 	)
 
 	if err != nil {
+		logger.Debug("[ValidateTokenAndGetUser] query error: %v", err)
 		return "", err
 	}
 
-	// Compare token values properly
+	logger.Debug("[ValidateTokenAndGetUser] found %d api.token records", len(records))
+
 	for _, record := range records {
+		storedValue := record.Get("value")
+		logger.Debug("[ValidateTokenAndGetUser] stored value=%v (type: %T)", storedValue, storedValue)
+
+		// Get the string value properly
 		userId := record.GetString("user")
 		storedToken, _ := s.GetString(userId, "api.token")
+		logger.Debug("[ValidateTokenAndGetUser] userId=%s, storedToken=%s", userId, storedToken)
 
 		if storedToken == token {
 			// Check if API is enabled for this user
 			enabled, err := s.GetBool(userId, "api.enabled")
 			if err != nil || !enabled {
+				logger.Debug("[ValidateTokenAndGetUser] API not enabled")
 				return "", err
 			}
 			return userId, nil
 		}
 	}
 
+	logger.Debug("[ValidateTokenAndGetUser] no matching token found")
 	return "", nil
 }
