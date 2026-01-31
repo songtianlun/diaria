@@ -13,6 +13,9 @@ import (
 	"github.com/songtianlun/diaria/internal/logger"
 )
 
+// ErrUnknownKey is returned when trying to set an unregistered configuration key
+var ErrUnknownKey = errors.New("unknown configuration key")
+
 // ErrAPIDisabled is returned when the API is disabled for a user
 var ErrAPIDisabled = errors.New("API is disabled for this user")
 
@@ -112,6 +115,11 @@ func (s *ConfigService) GetBool(userId, key string) (bool, error) {
 
 // Set stores a configuration value for a user
 func (s *ConfigService) Set(userId, key string, value any) error {
+	// Validate key against registry
+	if _, ok := GetConfigMeta(key); !ok {
+		return ErrUnknownKey
+	}
+
 	// Find existing record
 	record, err := s.app.Dao().FindFirstRecordByFilter(
 		"user_settings",
@@ -168,6 +176,11 @@ func (s *ConfigService) GetBatch(userId string) (map[string]any, error) {
 func (s *ConfigService) SetBatch(userId string, settings map[string]any) error {
 	return s.app.Dao().RunInTransaction(func(txDao *daos.Dao) error {
 		for key, value := range settings {
+			// Skip unknown keys with warning log
+			if _, ok := GetConfigMeta(key); !ok {
+				logger.Warn("[ConfigService.SetBatch] unknown key: %s, skipping", key)
+				continue
+			}
 			// Find existing record
 			record, err := txDao.FindFirstRecordByFilter(
 				"user_settings",
@@ -236,47 +249,40 @@ func isSensitiveKey(key string) bool {
 func (s *ConfigService) ValidateTokenAndGetUser(token string) (string, error) {
 	logger.Debug("[ValidateTokenAndGetUser] validating token: %s", maskSensitiveValue(token))
 
-	// Find the record with matching token
-	records, err := s.app.Dao().FindRecordsByFilter(
+	// Direct query by token value using index on key field
+	record, err := s.app.Dao().FindFirstRecordByFilter(
 		"user_settings",
-		"key = 'api.token'",
-		"",
-		-1,
-		0,
+		"key = 'api.token' && value = {:token}",
+		map[string]any{"token": token},
 	)
 
 	if err != nil {
-		logger.Debug("[ValidateTokenAndGetUser] query error: %v", err)
+		logger.Debug("[ValidateTokenAndGetUser] no matching token found: %v", err)
+		return "", nil
+	}
+
+	userId := record.GetString("user")
+	storedToken := s.parseStringValue(record.Get("value"))
+
+	// Use constant-time comparison to prevent timing attacks
+	if subtle.ConstantTimeCompare([]byte(storedToken), []byte(token)) != 1 {
+		logger.Debug("[ValidateTokenAndGetUser] token mismatch")
+		return "", nil
+	}
+
+	// Check if API is enabled for this user
+	enabled, err := s.GetBool(userId, "api.enabled")
+	if err != nil {
+		logger.Debug("[ValidateTokenAndGetUser] error checking API enabled: %v", err)
 		return "", err
 	}
-
-	logger.Debug("[ValidateTokenAndGetUser] found %d api.token records", len(records))
-
-	for _, record := range records {
-		// Parse token directly from record value to avoid extra DB query
-		storedToken := s.parseStringValue(record.Get("value"))
-		userId := record.GetString("user")
-
-		// Use constant-time comparison to prevent timing attacks
-		if len(storedToken) == len(token) &&
-			subtle.ConstantTimeCompare([]byte(storedToken), []byte(token)) == 1 {
-			// Check if API is enabled for this user
-			enabled, err := s.GetBool(userId, "api.enabled")
-			if err != nil {
-				logger.Debug("[ValidateTokenAndGetUser] error checking API enabled: %v", err)
-				return "", err
-			}
-			if !enabled {
-				logger.Debug("[ValidateTokenAndGetUser] API disabled for user: %s", userId)
-				return "", ErrAPIDisabled
-			}
-			logger.Debug("[ValidateTokenAndGetUser] token validated for user: %s", userId)
-			return userId, nil
-		}
+	if !enabled {
+		logger.Debug("[ValidateTokenAndGetUser] API disabled for user: %s", userId)
+		return "", ErrAPIDisabled
 	}
 
-	logger.Debug("[ValidateTokenAndGetUser] no matching token found")
-	return "", nil
+	logger.Debug("[ValidateTokenAndGetUser] token validated for user: %s", userId)
+	return userId, nil
 }
 
 // parseStringValue extracts a string from various value types

@@ -199,4 +199,85 @@ func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 			"success": true,
 		})
 	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Get single setting by key
+	e.Router.GET("/api/v1/settings/:key", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		userId := authRecord.Id
+		key := c.PathParam("key")
+
+		// Validate key against registry
+		if _, ok := config.GetConfigMeta(key); !ok {
+			return apis.NewBadRequestError("Unknown setting key: "+key, nil)
+		}
+
+		value, err := configService.Get(userId, key)
+		if err != nil {
+			return apis.NewBadRequestError("Failed to get setting", err)
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{
+			"key":   key,
+			"value": value,
+		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Update single setting by key
+	e.Router.PUT("/api/v1/settings/:key", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		userId := authRecord.Id
+		key := c.PathParam("key")
+
+		// Validate key against registry
+		if _, ok := config.GetConfigMeta(key); !ok {
+			return apis.NewBadRequestError("Unknown setting key: "+key, nil)
+		}
+
+		var body struct {
+			Value any `json:"value"`
+		}
+		if err := c.Bind(&body); err != nil {
+			return apis.NewBadRequestError("Invalid request body", err)
+		}
+
+		if err := configService.Set(userId, key, body.Value); err != nil {
+			return apis.NewBadRequestError("Failed to save setting", err)
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{
+			"success": true,
+		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Delete single setting by key
+	e.Router.DELETE("/api/v1/settings/:key", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		userId := authRecord.Id
+		key := c.PathParam("key")
+
+		// Validate key against registry
+		if _, ok := config.GetConfigMeta(key); !ok {
+			return apis.NewBadRequestError("Unknown setting key: "+key, nil)
+		}
+
+		if err := configService.Delete(userId, key); err != nil {
+			return apis.NewBadRequestError("Failed to delete setting", err)
+		}
+
+		return c.JSON(http.StatusOK, map[string]any{
+			"success": true,
+		})
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
 }
