@@ -5,7 +5,9 @@
 		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		%sveltekit.head%
-		<script defer data-domain="diaria.frytea.com" src="https://plausible.frytea.com/js/script.js"></script>
+		<script>
+			document.write('<script defer data-domain="diaria.frytea.com" event-domain="' + window.location.hostname + '" src="https://plausible.frytea.com/js/script.pageview-props.js"><\/script>');
+		</script>
 	</head>
 	<body data-sveltekit-preload-data="hover">
 		<div style="display: contents">%sveltekit.body%</div>
