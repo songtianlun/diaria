@@ -13,16 +13,12 @@ var ConfigRegistry = map[string]ConfigMeta{
 	"api.token":   {Type: "string", Default: "", Encrypted: false},
 	"api.enabled": {Type: "bool", Default: false, Encrypted: false},
 
-	// AI Embedding settings
-	"ai.enabled":            {Type: "bool", Default: false, Encrypted: false},
-	"ai.embedding.base_url": {Type: "string", Default: "", Encrypted: false},
-	"ai.embedding.model":    {Type: "string", Default: "", Encrypted: false},
-	"ai.embedding.api_key":  {Type: "string", Default: "", Encrypted: true},
-
-	// AI LLM settings
-	"ai.llm.base_url": {Type: "string", Default: "", Encrypted: false},
-	"ai.llm.model":    {Type: "string", Default: "", Encrypted: false},
-	"ai.llm.api_key":  {Type: "string", Default: "", Encrypted: true},
+	// AI settings (unified API key and base URL)
+	"ai.enabled":         {Type: "bool", Default: false, Encrypted: false},
+	"ai.api_key":         {Type: "string", Default: "", Encrypted: true},
+	"ai.base_url":        {Type: "string", Default: "", Encrypted: false},
+	"ai.chat_model":      {Type: "string", Default: "", Encrypted: false},
+	"ai.embedding_model": {Type: "string", Default: "", Encrypted: false},
 }
 
 // GetConfigMeta returns the metadata for a configuration key

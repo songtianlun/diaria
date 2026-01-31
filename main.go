@@ -144,6 +144,7 @@ func main() {
 		// Register API routes
 		api.RegisterDiaryRoutes(app, e)
 		api.RegisterSettingsRoutes(app, e)
+		api.RegisterAIRoutes(app, e)
 		api.RegisterPublicRoutes(app, e)
 		api.RegisterVersionRoutes(e, Version, Name)
 
