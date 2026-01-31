@@ -135,8 +135,9 @@ func (s *ConfigService) GetBatch(userId string, prefix string) (map[string]any, 
 	params := map[string]any{"user": userId}
 
 	if prefix != "" {
+		// Use prefix with dot to ensure exact prefix matching (e.g., "ai." matches "ai.xxx" but not "ai_other")
 		filter += " && key ~ {:prefix}"
-		params["prefix"] = prefix + "%"
+		params["prefix"] = prefix + ".%"
 	}
 
 	records, err := s.app.Dao().FindRecordsByFilter(
@@ -191,27 +192,33 @@ func (s *ConfigService) Delete(userId, key string) error {
 
 // ValidateTokenAndGetUser validates an API token and returns the user ID
 func (s *ConfigService) ValidateTokenAndGetUser(token string) (string, error) {
-	// Find the token in user_settings
-	// JSON field stores string as JSON, so we need to query with quoted value
-	tokenRecord, err := s.app.Dao().FindFirstRecordByFilter(
+	// Find all api.token records
+	records, err := s.app.Dao().FindRecordsByFilter(
 		"user_settings",
-		"key = 'api.token' && value = {:token}",
-		map[string]any{
-			"token": "\"" + token + "\"",
-		},
+		"key = 'api.token'",
+		"",
+		-1,
+		0,
 	)
 
 	if err != nil {
 		return "", err
 	}
 
-	userId := tokenRecord.GetString("user")
+	// Compare token values properly
+	for _, record := range records {
+		userId := record.GetString("user")
+		storedToken, _ := s.GetString(userId, "api.token")
 
-	// Check if API is enabled for this user
-	enabled, err := s.GetBool(userId, "api.enabled")
-	if err != nil || !enabled {
-		return "", err
+		if storedToken == token {
+			// Check if API is enabled for this user
+			enabled, err := s.GetBool(userId, "api.enabled")
+			if err != nil || !enabled {
+				return "", err
+			}
+			return userId, nil
+		}
 	}
 
-	return userId, nil
+	return "", nil
 }

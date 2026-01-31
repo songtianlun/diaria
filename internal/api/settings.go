@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"net/http"
-	"strings"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -170,8 +169,8 @@ func RegisterSettingsRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 
 		// Validate keys against registry
 		for key := range body.Settings {
-			if !strings.Contains(key, ".") {
-				return apis.NewBadRequestError("Invalid setting key: "+key, nil)
+			if _, ok := config.GetConfigMeta(key); !ok {
+				return apis.NewBadRequestError("Unknown setting key: "+key, nil)
 			}
 		}
 
