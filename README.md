@@ -8,9 +8,7 @@
 
 ### About
 
-**Journitalia** - *from Latin "diaria", meaning daily records*
-
-A simple, elegant, and self-hosted diary application built with PocketBase and modern web technologies.
+**Journitalia** (Chinese: 吾身) - A simple, elegant, and self-hosted diary application built with PocketBase and modern web technologies.
 
 ### Features
 
@@ -156,9 +154,9 @@ Access the PocketBase admin panel at `http://localhost:8090/_/` to:
 
 ### 关于
 
-**Journitalia** - *源自拉丁语"diaria"，意为每日记录*
+**吾身** (Journitalia) - 取自"吾日三省吾身"，一款帮助你反思、复盘、总结的日记应用，记录独一无二的人生。
 
-一个简洁、优雅、可自托管的日记应用，基于 PocketBase 和现代 Web 技术构建。
+基于 PocketBase 和现代 Web 技术构建，简洁、优雅、可自托管。
 
 ### 主要功能
 
