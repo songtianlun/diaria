@@ -3,7 +3,7 @@
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import Placeholder from '@tiptap/extension-placeholder';
-	import Image from '@tiptap/extension-image';
+	import { ImageExtension } from './ImageNodeView';
 	import Link from '@tiptap/extension-link';
 	import Underline from '@tiptap/extension-underline';
 	import Highlight from '@tiptap/extension-highlight';
@@ -16,19 +16,22 @@
 	import { common, createLowlight } from 'lowlight';
 	import { uploadImage, getMediaUrl } from '$lib/utils/uploadImage';
 	import { SlashCommands } from './SlashCommands';
-	import { getSuggestionItems, setImageUploadTrigger } from './commands';
+	import { getSuggestionItems, setImageUploadTrigger, setGalleryPickerTrigger } from './commands';
 	import { suggestionRenderer, showCommandMenu } from './suggestionRenderer';
+	import MediaPicker from './MediaPicker.svelte';
+	import { getMediaFileUrl, addMediaDiary } from '$lib/api/media';
+	import type { MediaWithDiary } from '$lib/api/media';
 
 	export let content = '';
 	export let onChange: (value: string) => void = () => {};
 	export let placeholder = 'Start writing...';
-	export let diaryId: string | undefined = undefined;
+	export let diaryDate: string | undefined = undefined;
 
 	let editorElement: HTMLDivElement;
 	let editor: Editor | null = null;
 	let fileInput: HTMLInputElement;
-	let isUploading = false;
 	let uploadError = '';
+	let showMediaPicker = false;
 
 	// Add button state
 	let showAddButton = false;
@@ -54,30 +57,47 @@
 		return null;
 	}
 
-	// Handle image upload
-	async function handleImageUpload(file: File): Promise<string | null> {
-		if (isUploading) return null;
+	// Generate unique placeholder ID
+	function generatePlaceholderId(): string {
+		return `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+	}
+
+	// Handle image upload with placeholder
+	async function handleImageUploadWithPlaceholder(file: File): Promise<void> {
+		if (!editor) return;
 
 		// Validate file
 		const validationError = validateImageFile(file);
 		if (validationError) {
 			uploadError = validationError;
 			setTimeout(() => (uploadError = ''), 3000);
-			return null;
+			return;
 		}
 
-		isUploading = true;
+		const placeholderId = generatePlaceholderId();
+
+		// Insert placeholder with preview
+		editor.chain().focus().setImagePlaceholder({ id: placeholderId, file }).run();
+
 		uploadError = '';
+
 		try {
-			const media = await uploadImage(file, { diaryId });
-			return getMediaUrl(media);
+			const media = await uploadImage(file, { diaryDate });
+			const url = getMediaUrl(media);
+
+			// Replace placeholder with actual image
+			editor.commands.replacePlaceholderWithImage({
+				id: placeholderId,
+				src: url,
+				alt: file.name,
+			});
 		} catch (error) {
 			console.error('Image upload failed:', error);
 			uploadError = 'Image upload failed, please try again';
 			setTimeout(() => (uploadError = ''), 3000);
-			return null;
-		} finally {
-			isUploading = false;
+
+			// Remove placeholder on error
+			editor.commands.removePlaceholder(placeholderId);
 		}
 	}
 
@@ -91,11 +111,7 @@
 				event.preventDefault();
 				const file = item.getAsFile();
 				if (file) {
-					handleImageUpload(file).then((url) => {
-						if (url && editor) {
-							editor.chain().focus().setImage({ src: url }).run();
-						}
-					});
+					handleImageUploadWithPlaceholder(file);
 				}
 				return true;
 			}
@@ -111,11 +127,7 @@
 		const file = files[0];
 		if (file.type.startsWith('image/')) {
 			event.preventDefault();
-			handleImageUpload(file).then((url) => {
-				if (url && editor) {
-					editor.chain().focus().setImage({ src: url }).run();
-				}
-			});
+			handleImageUploadWithPlaceholder(file);
 			return true;
 		}
 		return false;
@@ -126,15 +138,37 @@
 		fileInput?.click();
 	}
 
+	// Handle gallery picker trigger
+	function handleGalleryPicker() {
+		showMediaPicker = true;
+	}
+
+	// Handle media selection from gallery
+	async function handleMediaSelect(media: MediaWithDiary) {
+		if (!editor) return;
+
+		const url = getMediaFileUrl(media);
+		editor.chain().focus().setImage({ src: url }).run();
+
+		// Associate media with current diary
+		if (diaryDate && media.id) {
+			try {
+				const { getOrCreateDiaryId } = await import('$lib/utils/uploadImage');
+				const diaryId = await getOrCreateDiaryId(diaryDate);
+				if (diaryId) {
+					await addMediaDiary(media.id, diaryId);
+				}
+			} catch (error) {
+				console.error('Failed to associate media with diary:', error);
+			}
+		}
+	}
+
 	function handleFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		const file = input.files?.[0];
 		if (file) {
-			handleImageUpload(file).then((url) => {
-				if (url && editor) {
-					editor.chain().focus().setImage({ src: url }).run();
-				}
-			});
+			handleImageUploadWithPlaceholder(file);
 			input.value = '';
 		}
 	}
@@ -172,6 +206,8 @@
 	onMount(() => {
 		// Register image upload trigger for slash commands
 		setImageUploadTrigger(handleSlashImage);
+		// Register gallery picker trigger for slash commands
+		setGalleryPickerTrigger(handleGalleryPicker);
 
 		editor = new Editor({
 			element: editorElement,
@@ -188,7 +224,7 @@
 					},
 					showOnlyCurrent: true,
 				}),
-				Image.configure({
+				ImageExtension.configure({
 					inline: false,
 					allowBase64: true,
 				}),
@@ -240,6 +276,8 @@
 	onDestroy(() => {
 		// Cleanup image upload trigger
 		setImageUploadTrigger(null);
+		// Cleanup gallery picker trigger
+		setGalleryPickerTrigger(null);
 		editor?.destroy();
 	});
 
@@ -275,10 +313,14 @@
 	{#if uploadError}
 		<div class="upload-error">{uploadError}</div>
 	{/if}
-	{#if isUploading}
-		<div class="upload-loading">Uploading...</div>
-	{/if}
 </div>
+
+{#if showMediaPicker}
+	<MediaPicker
+		onSelect={handleMediaSelect}
+		onClose={() => showMediaPicker = false}
+	/>
+{/if}
 
 <style>
 	.tiptap-editor {
@@ -325,18 +367,6 @@
 		font-size: 14px;
 		z-index: 1000;
 		animation: slideIn 0.2s ease;
-	}
-
-	.upload-loading {
-		position: fixed;
-		bottom: 20px;
-		right: 20px;
-		background: hsl(var(--primary, 220 14% 20%));
-		color: white;
-		padding: 12px 16px;
-		border-radius: 8px;
-		font-size: 14px;
-		z-index: 1000;
 	}
 
 	@keyframes slideIn {

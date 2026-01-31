@@ -9,11 +9,17 @@ export interface CommandItem {
 }
 
 export type ImageUploadTrigger = () => void;
+export type GalleryPickerTrigger = () => void;
 
 let imageUploadTrigger: ImageUploadTrigger | null = null;
+let galleryPickerTrigger: GalleryPickerTrigger | null = null;
 
 export function setImageUploadTrigger(trigger: ImageUploadTrigger | null) {
 	imageUploadTrigger = trigger;
+}
+
+export function setGalleryPickerTrigger(trigger: GalleryPickerTrigger | null) {
+	galleryPickerTrigger = trigger;
 }
 
 export const getSuggestionItems = (query: string): CommandItem[] => {
@@ -82,6 +88,30 @@ export const getSuggestionItems = (query: string): CommandItem[] => {
 			},
 		},
 		{
+			title: 'Image',
+			description: 'Upload image',
+			icon: 'image',
+			group: 'INSERT',
+			command: ({ editor, range }) => {
+				editor.chain().focus().deleteRange(range).run();
+				if (imageUploadTrigger) {
+					imageUploadTrigger();
+				}
+			},
+		},
+		{
+			title: 'Gallery',
+			description: 'Insert from gallery',
+			icon: 'images',
+			group: 'INSERT',
+			command: ({ editor, range }) => {
+				editor.chain().focus().deleteRange(range).run();
+				if (galleryPickerTrigger) {
+					galleryPickerTrigger();
+				}
+			},
+		},
+		{
 			title: 'Quote',
 			description: 'Blockquote',
 			icon: 'quote',
@@ -106,18 +136,6 @@ export const getSuggestionItems = (query: string): CommandItem[] => {
 			group: 'INSERT',
 			command: ({ editor, range }) => {
 				editor.chain().focus().deleteRange(range).setHorizontalRule().run();
-			},
-		},
-		{
-			title: 'Image',
-			description: 'Upload image',
-			icon: 'image',
-			group: 'INSERT',
-			command: ({ editor, range }) => {
-				editor.chain().focus().deleteRange(range).run();
-				if (imageUploadTrigger) {
-					imageUploadTrigger();
-				}
 			},
 		},
 	];
