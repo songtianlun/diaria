@@ -6,7 +6,7 @@ LDFLAGS := -X main.Version=$(VERSION)
 
 # Default target
 help:
-	@echo "Diaria Development Commands:"
+	@echo "Journitalia Development Commands:"
 	@echo "  make build      - Build both frontend and backend"
 	@echo "  make dev        - Run in development mode"
 	@echo "  make run        - Run the application"
@@ -35,7 +35,7 @@ backend: frontend
 	@mkdir -p internal/static/build
 	@cp -r site/build/* internal/static/build/
 	@echo "Building backend with version $(VERSION)..."
-	go build -ldflags "$(LDFLAGS)" -o diaria .
+	go build -ldflags "$(LDFLAGS)" -o journitalia .
 
 # Development mode (requires running frontend and backend separately)
 dev:
@@ -56,12 +56,12 @@ dev-backend:
 
 # Run the built application
 run:
-	./diaria serve
+	./journitalia serve
 
 # Clean build artifacts
 clean:
 	@echo "Cleaning..."
-	rm -f diaria
+	rm -f journitalia
 	rm -rf site/build site/node_modules site/.svelte-kit
 	rm -rf dist
 
@@ -71,7 +71,7 @@ test:
 
 # Build Docker image
 docker:
-	docker build -t diaria:latest .
+	docker build -t journitalia:latest .
 
 # Install dependencies
 deps:

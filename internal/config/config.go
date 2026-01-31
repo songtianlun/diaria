@@ -10,7 +10,7 @@ import (
 	"github.com/pocketbase/pocketbase/models"
 	"github.com/pocketbase/pocketbase/tools/types"
 
-	"github.com/songtianlun/diaria/internal/logger"
+	"github.com/songtianlun/journitalia/internal/logger"
 )
 
 // ErrUnknownKey is returned when trying to set an unregistered configuration key

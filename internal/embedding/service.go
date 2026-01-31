@@ -13,8 +13,8 @@ import (
 	chromem "github.com/philippgille/chromem-go"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/models"
-	"github.com/songtianlun/diaria/internal/config"
-	"github.com/songtianlun/diaria/internal/logger"
+	"github.com/songtianlun/journitalia/internal/config"
+	"github.com/songtianlun/journitalia/internal/logger"
 )
 
 // EmbeddingService handles diary embedding operations

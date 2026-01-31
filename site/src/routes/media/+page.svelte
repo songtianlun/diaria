@@ -98,7 +98,7 @@
 </script>
 
 <svelte:head>
-	<title>Media Library - Diaria</title>
+	<title>Media Library - Journitalia</title>
 </svelte:head>
 
 <div class="min-h-screen bg-background">

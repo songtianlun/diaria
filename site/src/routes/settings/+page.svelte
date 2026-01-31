@@ -186,7 +186,7 @@
 </script>
 
 <svelte:head>
-	<title>Settings - Diaria</title>
+	<title>Settings - Journitalia</title>
 </svelte:head>
 
 <div class="min-h-screen bg-background">

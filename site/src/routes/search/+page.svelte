@@ -98,7 +98,7 @@
 </script>
 
 <svelte:head>
-	<title>Search - Diaria</title>
+	<title>Search - Journitalia</title>
 </svelte:head>
 
 <div class="min-h-screen bg-background">
@@ -107,7 +107,7 @@
 		<div class="max-w-3xl mx-auto px-4 h-11">
 			<div class="flex items-center justify-between h-full">
 				<a href="/" class="text-lg font-semibold text-foreground hover:text-primary transition-colors">
-					Diaria
+					Journitalia
 				</a>
 
 				<div class="flex items-center gap-2">

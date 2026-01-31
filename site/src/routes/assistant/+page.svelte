@@ -170,7 +170,7 @@
 </script>
 
 <svelte:head>
-	<title>AI Assistant - Diaria</title>
+	<title>AI Assistant - Journitalia</title>
 </svelte:head>
 
 <div class="h-screen bg-background flex flex-col overflow-hidden">
@@ -188,7 +188,7 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
 						</svg>
 					</button>
-					<a href="/diary" class="text-lg font-semibold text-foreground hover:text-primary transition-colors">Diaria</a>
+					<a href="/diary" class="text-lg font-semibold text-foreground hover:text-primary transition-colors">Journitalia</a>
 					<span class="text-muted-foreground/50">/</span>
 					<span class="text-sm font-medium text-muted-foreground">AI Assistant</span>
 				</div>

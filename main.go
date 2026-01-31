@@ -10,10 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/songtianlun/diaria/internal/api"
-	"github.com/songtianlun/diaria/internal/embedding"
-	_ "github.com/songtianlun/diaria/internal/migrations"
-	"github.com/songtianlun/diaria/internal/static"
+	"github.com/songtianlun/journitalia/internal/api"
+	"github.com/songtianlun/journitalia/internal/embedding"
+	_ "github.com/songtianlun/journitalia/internal/migrations"
+	"github.com/songtianlun/journitalia/internal/static"
 
 	"github.com/labstack/echo/v5"
 	"github.com/pocketbase/pocketbase"
@@ -25,12 +25,16 @@ import (
 // getDataDir returns the data directory path
 // Priority: command line flag > environment variable > default value
 func getDataDir() string {
-	// Check environment variable first
+	// Check new environment variable first
+	if dataDir := os.Getenv("JOURNITALIA_DATA_PATH"); dataDir != "" {
+		return dataDir
+	}
+	// Fallback to legacy environment variable for backwards compatibility
 	if dataDir := os.Getenv("DIARIA_DATA_PATH"); dataDir != "" {
 		return dataDir
 	}
 	// Default value
-	return "./diaria_data"
+	return "./journitalia_data"
 }
 
 // serveSPA serves the SPA with fallback to index.html for client-side routing
