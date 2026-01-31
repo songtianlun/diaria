@@ -33,6 +33,14 @@ type BuildResult struct {
 	ErrorDetails []string `json:"error_details,omitempty"`
 }
 
+// VectorStats represents statistics about the vector index
+type VectorStats struct {
+	VectorCount int  `json:"vector_count"`
+	DiaryCount  int  `json:"diary_count"`
+	IsIndexed   bool `json:"is_indexed"`
+	NeedsBuild  bool `json:"needs_build"`
+}
+
 // EmbeddingRequest represents a request to the embedding API
 type EmbeddingRequest struct {
 	Input string `json:"input"`
@@ -241,4 +249,35 @@ func extractDate(dateTime string) string {
 		return dateTime[:10]
 	}
 	return dateTime
+}
+
+// GetVectorStats returns statistics about the vector index for a user
+func (s *EmbeddingService) GetVectorStats(ctx context.Context, userID string) (*VectorStats, error) {
+	stats := &VectorStats{}
+
+	// Get diary count
+	diaries, err := s.app.Dao().FindRecordsByFilter(
+		"diaries",
+		"owner = {:owner}",
+		"",
+		-1,
+		0,
+		map[string]any{"owner": userID},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch diaries: %w", err)
+	}
+	stats.DiaryCount = len(diaries)
+
+	// Get vector count from collection
+	collection := s.vectorDB.GetCollection(userID)
+	if collection != nil {
+		stats.VectorCount = collection.Count()
+		stats.IsIndexed = true
+	}
+
+	// Determine if rebuild is needed
+	stats.NeedsBuild = stats.DiaryCount > 0 && stats.VectorCount != stats.DiaryCount
+
+	return stats, nil
 }

@@ -23,6 +23,13 @@ export interface BuildVectorsResult {
 	error_details?: string[];
 }
 
+export interface VectorStats {
+	vector_count: number;
+	diary_count: number;
+	is_indexed: boolean;
+	needs_build: boolean;
+}
+
 /**
  * Get AI settings
  */
@@ -112,6 +119,24 @@ export async function buildVectors(): Promise<BuildVectorsResult> {
 	if (!response.ok) {
 		const data = await response.json();
 		throw new Error(data.message || 'Failed to build vectors');
+	}
+
+	return await response.json();
+}
+
+/**
+ * Get vector stats
+ */
+export async function getVectorStats(): Promise<VectorStats> {
+	const response = await fetch('/api/ai/vectors/stats', {
+		headers: {
+			'Authorization': `Bearer ${pb.authStore.token}`
+		}
+	});
+
+	if (!response.ok) {
+		const data = await response.json();
+		throw new Error(data.message || 'Failed to get vector stats');
 	}
 
 	return await response.json();

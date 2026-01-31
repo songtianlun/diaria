@@ -3,7 +3,7 @@
 	import { goto } from '$app/navigation';
 	import { isAuthenticated } from '$lib/api/client';
 	import { getApiToken, toggleApiToken, resetApiToken, type ApiTokenStatus } from '$lib/api/settings';
-	import { getAISettings, saveAISettings, fetchModels, buildVectors, type AISettings, type ModelInfo, type BuildVectorsResult } from '$lib/api/ai';
+	import { getAISettings, saveAISettings, fetchModels, buildVectors, getVectorStats, type AISettings, type ModelInfo, type BuildVectorsResult, type VectorStats } from '$lib/api/ai';
 
 	let loading = true;
 	let tokenStatus: ApiTokenStatus = { exists: false, enabled: false, token: '' };
@@ -30,6 +30,10 @@
 	let buildingVectors = false;
 	let buildResult: BuildVectorsResult | null = null;
 	let buildError = '';
+
+	// Vector stats
+	let vectorStats: VectorStats | null = null;
+	let loadingStats = false;
 
 	async function loadTokenStatus() {
 		tokenStatus = await getApiToken();
@@ -138,10 +142,25 @@
 
 		try {
 			buildResult = await buildVectors();
+			// Refresh stats after building
+			await loadVectorStats();
 		} catch (e) {
 			buildError = e instanceof Error ? e.message : 'Failed to build vectors';
 		}
 		buildingVectors = false;
+	}
+
+	async function loadVectorStats() {
+		if (!aiSettings.enabled) return;
+
+		loadingStats = true;
+		try {
+			vectorStats = await getVectorStats();
+		} catch (e) {
+			console.error('Failed to load vector stats:', e);
+			vectorStats = null;
+		}
+		loadingStats = false;
 	}
 
 	// Check if AI can be enabled
@@ -155,6 +174,10 @@
 		loading = true;
 		await Promise.all([loadTokenStatus(), loadAISettings()]);
 		loading = false;
+		// Load vector stats if AI is enabled
+		if (aiSettings.enabled) {
+			await loadVectorStats();
+		}
 	});
 </script>
 
@@ -463,6 +486,50 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 											</div>
 										</div>
 									{/if}
+								</div>
+							{/if}
+						</div>
+
+						<!-- Vector Index Status -->
+						<div class="py-4 border-b border-border/50">
+							<div class="font-medium text-foreground mb-2">Vector Index Status</div>
+							{#if loadingStats}
+								<div class="flex items-center gap-2 text-sm text-muted-foreground">
+									<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+									</svg>
+									Loading...
+								</div>
+							{:else if vectorStats}
+								<div class="space-y-2">
+									<div class="flex items-center justify-between text-sm">
+										<span class="text-muted-foreground">Indexed vectors</span>
+										<span class="font-medium text-foreground">{vectorStats.vector_count} / {vectorStats.diary_count}</span>
+									</div>
+									<div class="w-full bg-muted rounded-full h-2">
+										<div
+											class="h-2 rounded-full transition-all duration-300 {vectorStats.vector_count === vectorStats.diary_count ? 'bg-green-500' : 'bg-primary'}"
+											style="width: {vectorStats.diary_count > 0 ? (vectorStats.vector_count / vectorStats.diary_count * 100) : 0}%"
+										></div>
+									</div>
+									{#if vectorStats.needs_build}
+										<div class="text-xs text-amber-600">
+											{vectorStats.diary_count - vectorStats.vector_count} diaries need indexing
+										</div>
+									{:else if vectorStats.vector_count > 0}
+										<div class="text-xs text-green-600">
+											All diaries indexed
+										</div>
+									{:else}
+										<div class="text-xs text-muted-foreground">
+											No diaries to index
+										</div>
+									{/if}
+								</div>
+							{:else}
+								<div class="text-sm text-muted-foreground">
+									No index data available
 								</div>
 							{/if}
 						</div>

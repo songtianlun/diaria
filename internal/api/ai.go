@@ -161,6 +161,28 @@ func RegisterAIRoutes(app *pocketbase.PocketBase, e *core.ServeEvent, embeddingS
 
 		return c.JSON(http.StatusOK, result)
 	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
+
+	// Get vector stats for user's diaries
+	e.Router.GET("/api/ai/vectors/stats", func(c echo.Context) error {
+		authRecord, _ := c.Get(apis.ContextAuthRecordKey).(*models.Record)
+		if authRecord == nil {
+			return apis.NewUnauthorizedError("The request requires valid authorization token.", nil)
+		}
+
+		if embeddingService == nil {
+			return apis.NewBadRequestError("Embedding service not initialized", nil)
+		}
+
+		userId := authRecord.Id
+
+		stats, err := embeddingService.GetVectorStats(c.Request().Context(), userId)
+		if err != nil {
+			logger.Error("[GET /api/ai/vectors/stats] error getting stats: %v", err)
+			return apis.NewBadRequestError("Failed to get vector stats: "+err.Error(), nil)
+		}
+
+		return c.JSON(http.StatusOK, stats)
+	}, apis.ActivityLogger(app), apis.RequireRecordAuth())
 }
 
 // fetchModels fetches available models from an OpenAI-compatible API
