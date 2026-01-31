@@ -7,10 +7,14 @@ import (
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
+
+	"github.com/songtianlun/diaria/internal/config"
 )
 
 // RegisterPublicRoutes registers public API endpoints that use API token authentication
 func RegisterPublicRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
+	configService := config.NewConfigService(app)
+
 	// Get diaries by date or date range using API token
 	e.Router.GET("/api/v1/diaries", func(c echo.Context) error {
 		token := c.QueryParam("token")
@@ -18,20 +22,11 @@ func RegisterPublicRoutes(app *pocketbase.PocketBase, e *core.ServeEvent) {
 			return apis.NewUnauthorizedError("API token is required", nil)
 		}
 
-		// Validate token and get owner
-		tokenRecord, err := app.Dao().FindFirstRecordByFilter(
-			"api_tokens",
-			"token = {:token} && enabled = true",
-			map[string]any{
-				"token": token,
-			},
-		)
-
+		// Validate token and get owner using ConfigService
+		userId, err := configService.ValidateTokenAndGetUser(token)
 		if err != nil {
 			return apis.NewUnauthorizedError("Invalid or disabled API token", nil)
 		}
-
-		userId := tokenRecord.GetString("owner")
 
 		// Check query parameters
 		date := c.QueryParam("date")
