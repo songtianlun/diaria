@@ -399,6 +399,18 @@ func (s *EmbeddingService) QuerySimilar(ctx context.Context, userID, query strin
 		return nil, fmt.Errorf("failed to get collection: %w", err)
 	}
 
+	// Check collection count and adjust limit if necessary
+	// chromem-go requires nResults <= number of documents in collection
+	docCount := collection.Count()
+	if docCount == 0 {
+		logger.Info("[EmbeddingService] collection is empty, no documents to query")
+		return []DiarySearchResult{}, nil
+	}
+	if limit > docCount {
+		logger.Debug("[EmbeddingService] adjusting limit from %d to %d (collection size)", limit, docCount)
+		limit = docCount
+	}
+
 	// Query similar documents
 	results, err := collection.Query(ctx, query, limit, nil, nil)
 	if err != nil {
