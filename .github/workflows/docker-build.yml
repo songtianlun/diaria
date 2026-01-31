@@ -7,7 +7,6 @@ on:
       - 'release/**'
       - 'devel/**'
       - 'dev/**'
-      - 'fix/**'
     tags:
       - 'v*'
 
