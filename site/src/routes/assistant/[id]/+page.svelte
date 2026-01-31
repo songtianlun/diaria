@@ -16,6 +16,7 @@
 	import ChatMessage from '$lib/components/chat/ChatMessage.svelte';
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
 	import ConversationList from '$lib/components/chat/ConversationList.svelte';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 
 	let conversations: Conversation[] = [];
 	let selectedConversationId: string | null = null;
@@ -92,9 +93,9 @@
 
 		const convId = selectedConversationId;
 
-		// Add user message
+		// Add user message with unique ID
 		const userMsg: Message = {
-			id: 'temp-user',
+			id: `temp-user-${Date.now()}`,
 			role: 'user',
 			content,
 			created: new Date().toISOString()
@@ -122,7 +123,7 @@
 				}
 				if (chunk.done) {
 					const assistantMsg: Message = {
-						id: 'temp-assistant',
+						id: `temp-assistant-${Date.now()}`,
 						role: 'assistant',
 						content: streamingContent,
 						referenced_diaries: chunk.referenced_diaries,
@@ -181,32 +182,18 @@
 </svelte:head>
 
 <div class="h-screen bg-background flex flex-col overflow-hidden">
-	<!-- Header -->
-	<header class="glass border-b border-border/50 flex-shrink-0 z-30">
-		<div class="max-w-7xl mx-auto px-4 lg:px-6 h-14">
-			<div class="flex items-center justify-between h-full">
-				<div class="flex items-center gap-3">
-					<button
-						on:click={() => sidebarOpen = !sidebarOpen}
-						class="p-2 hover:bg-muted/50 rounded-lg transition-all duration-200 lg:hidden"
-						aria-label="Toggle sidebar"
-					>
-						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-						</svg>
-					</button>
-					<a href="/diary" class="text-lg font-semibold text-foreground hover:text-primary transition-colors">Journitalia</a>
-					<span class="text-muted-foreground/50">/</span>
-					<a href="/assistant" class="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">AI Assistant</a>
-				</div>
-				<a href="/diary" class="p-2 hover:bg-muted/50 rounded-lg transition-all duration-200" title="Back to Diary">
-					<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-					</svg>
-				</a>
-			</div>
-		</div>
-	</header>
+	<PageHeader title="AI Assistant" sticky={false}>
+		<button
+			slot="actions"
+			on:click={() => sidebarOpen = !sidebarOpen}
+			class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200 lg:hidden"
+			aria-label="Toggle sidebar"
+		>
+			<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+			</svg>
+		</button>
+	</PageHeader>
 
 	<!-- Main Content -->
 	{#if loading}
@@ -248,7 +235,7 @@
 				bg-card lg:bg-card/50 border-r lg:border border-border lg:rounded-2xl flex-shrink-0
 				transform transition-transform duration-300 ease-in-out
 				{sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
-				top-14 lg:top-0 h-[calc(100vh-3.5rem)] lg:h-full overflow-hidden">
+				top-11 lg:top-0 h-[calc(100vh-2.75rem)] lg:h-full overflow-hidden">
 				<ConversationList
 					{conversations}
 					selectedId={selectedConversationId}
@@ -290,7 +277,7 @@
 							{#each messages as message (message.id)}
 								<ChatMessage {message} />
 							{/each}
-							{#if streamingContent}
+							{#if isStreaming}
 								<ChatMessage
 									message={{ id: 'streaming', role: 'assistant', content: streamingContent, created: '' }}
 									isStreaming={true}
@@ -301,13 +288,16 @@
 				</div>
 
 				<!-- Input -->
-				<div class="border-t border-border/50 p-4 lg:p-5 bg-card/50 backdrop-blur-sm flex-shrink-0">
+				<div class="border-t border-border/50 p-4 lg:p-6 bg-gradient-to-t from-card/80 to-card/50 backdrop-blur-sm flex-shrink-0">
 					<div class="max-w-3xl mx-auto">
 						<ChatInput
 							disabled={isStreaming}
 							placeholder="Ask about your diary..."
 							on:send={(e) => handleSendMessage(e.detail)}
 						/>
+						<p class="text-xs text-muted-foreground/60 text-center mt-3">
+							Press Enter to send, Shift+Enter for new line
+						</p>
 					</div>
 				</div>
 			</main>

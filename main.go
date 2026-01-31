@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"io/fs"
@@ -9,9 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/songtianlun/journitalia/internal/api"
+	"github.com/songtianlun/journitalia/internal/config"
 	"github.com/songtianlun/journitalia/internal/embedding"
+	"github.com/songtianlun/journitalia/internal/logger"
 	_ "github.com/songtianlun/journitalia/internal/migrations"
 	"github.com/songtianlun/journitalia/internal/static"
 
@@ -156,6 +160,69 @@ func main() {
 		if vectorDB != nil {
 			embeddingService = embedding.NewEmbeddingService(app, vectorDB)
 		}
+
+		// Initialize config service for checking AI settings
+		configService := config.NewConfigService(app)
+
+		// Add diary create hook for auto vector build
+		app.OnRecordAfterCreateRequest("diaries").Add(func(e *core.RecordCreateEvent) error {
+			userID := e.Record.GetString("owner")
+			if userID == "" {
+				return nil
+			}
+
+			// Check if AI is enabled for this user
+			enabled, _ := configService.GetBool(userID, "ai.enabled")
+			if !enabled || embeddingService == nil {
+				return nil
+			}
+
+			// Run incremental vector build in background
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				defer cancel()
+
+				logger.Info("[AutoVectorBuild] triggered by diary create for user: %s", userID)
+				result, err := embeddingService.BuildIncrementalVectors(ctx, userID)
+				if err != nil {
+					logger.Error("[AutoVectorBuild] failed for user %s: %v", userID, err)
+					return
+				}
+				logger.Info("[AutoVectorBuild] completed for user %s: %d built, %d failed", userID, result.Success, result.Failed)
+			}()
+
+			return nil
+		})
+
+		// Add diary update hook for auto vector build
+		app.OnRecordAfterUpdateRequest("diaries").Add(func(e *core.RecordUpdateEvent) error {
+			userID := e.Record.GetString("owner")
+			if userID == "" {
+				return nil
+			}
+
+			// Check if AI is enabled for this user
+			enabled, _ := configService.GetBool(userID, "ai.enabled")
+			if !enabled || embeddingService == nil {
+				return nil
+			}
+
+			// Run incremental vector build in background
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				defer cancel()
+
+				logger.Info("[AutoVectorBuild] triggered by diary update for user: %s", userID)
+				result, err := embeddingService.BuildIncrementalVectors(ctx, userID)
+				if err != nil {
+					logger.Error("[AutoVectorBuild] failed for user %s: %v", userID, err)
+					return
+				}
+				logger.Info("[AutoVectorBuild] completed for user %s: %d built, %d failed", userID, result.Success, result.Failed)
+			}()
+
+			return nil
+		})
 
 		// Register API routes
 		api.RegisterDiaryRoutes(app, e)

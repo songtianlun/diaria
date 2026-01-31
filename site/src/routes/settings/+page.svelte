@@ -4,6 +4,7 @@
 	import { isAuthenticated } from '$lib/api/client';
 	import { getApiToken, toggleApiToken, resetApiToken, type ApiTokenStatus } from '$lib/api/settings';
 	import { getAISettings, saveAISettings, fetchModels, buildVectors, buildVectorsIncremental, getVectorStats, type AISettings, type ModelInfo, type BuildVectorsResult, type VectorStats } from '$lib/api/ai';
+	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 
 	let loading = true;
 	let tokenStatus: ApiTokenStatus = { exists: false, enabled: false, token: '' };
@@ -170,6 +171,38 @@
 	// Check if AI can be enabled
 	$: canEnableAI = aiSettings.api_key && aiSettings.base_url && aiSettings.chat_model && aiSettings.embedding_model;
 
+	// Embedding model keywords for sorting
+	const embeddingKeywords = ['embed', 'bge', 'e5', 'voyage', 'jina'];
+
+	// Check if a model is likely an embedding model
+	function isEmbeddingModel(modelId: string): boolean {
+		const lower = modelId.toLowerCase();
+		return embeddingKeywords.some(keyword => lower.includes(keyword));
+	}
+
+	// Check if a model is likely a chat model (not embedding)
+	function isChatModel(modelId: string): boolean {
+		return !isEmbeddingModel(modelId);
+	}
+
+	// Sorted models for embedding selection (embedding models first)
+	$: embeddingModels = [...models].sort((a, b) => {
+		const aIsEmbed = isEmbeddingModel(a.id);
+		const bIsEmbed = isEmbeddingModel(b.id);
+		if (aIsEmbed && !bIsEmbed) return -1;
+		if (!aIsEmbed && bIsEmbed) return 1;
+		return a.id.localeCompare(b.id);
+	});
+
+	// Sorted models for chat selection (chat models first)
+	$: chatModels = [...models].sort((a, b) => {
+		const aIsChat = isChatModel(a.id);
+		const bIsChat = isChatModel(b.id);
+		if (aIsChat && !bIsChat) return -1;
+		if (!aIsChat && bIsChat) return 1;
+		return a.id.localeCompare(b.id);
+	});
+
 	onMount(async () => {
 		if (!$isAuthenticated) {
 			goto('/login');
@@ -190,21 +223,7 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<!-- Header -->
-	<header class="glass border-b border-border/50 sticky top-0 z-20">
-		<div class="max-w-4xl mx-auto px-4 h-11">
-			<div class="flex items-center justify-between h-full">
-				<div class="flex items-center gap-3">
-					<a href="/diary" class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200" title="Back">
-						<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-						</svg>
-					</a>
-					<span class="text-lg font-semibold text-foreground">Settings</span>
-				</div>
-			</div>
-		</div>
-	</header>
+	<PageHeader title="Settings" />
 
 	<!-- Main Content -->
 	<main class="max-w-4xl mx-auto px-4 py-6">
@@ -334,7 +353,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 							placeholder="sk-..."
 							class="w-full px-3 py-2 bg-muted rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
 						/>
-						<p class="text-xs text-muted-foreground mt-1">Your API key for the AI service</p>
+						<p class="text-xs text-muted-foreground mt-1">Your API key for the AI service. OpenAI keys start with sk-, e.g. sk-xxx...</p>
 					</div>
 
 					<!-- Base URL -->
@@ -346,7 +365,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 							placeholder="https://api.openai.com"
 							class="w-full px-3 py-2 bg-muted rounded-lg text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
 						/>
-						<p class="text-xs text-muted-foreground mt-1">Base URL for the OpenAI-compatible API</p>
+						<p class="text-xs text-muted-foreground mt-1">Base URL for the OpenAI-compatible API, e.g. https://api.openai.com</p>
 					</div>
 
 					{#if modelsError}
@@ -364,7 +383,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 								class="flex-1 px-3 py-2 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
 							>
 								<option value="">Select a model</option>
-								{#each models as model}
+								{#each chatModels as model}
 									<option value={model.id}>{model.id}</option>
 								{/each}
 							</select>
@@ -379,7 +398,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 								</svg>
 							</button>
 						</div>
-						<p class="text-xs text-muted-foreground mt-1">Model for AI conversations</p>
+						<p class="text-xs text-muted-foreground mt-1">Model for AI conversations, e.g. gpt-4o, deepseek-chat</p>
 					</div>
 
 					<!-- Embedding Model -->
@@ -391,7 +410,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 								class="flex-1 px-3 py-2 bg-muted rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
 							>
 								<option value="">Select a model</option>
-								{#each models as model}
+								{#each embeddingModels as model}
 									<option value={model.id}>{model.id}</option>
 								{/each}
 							</select>
@@ -406,7 +425,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 								</svg>
 							</button>
 						</div>
-						<p class="text-xs text-muted-foreground mt-1">Model for text vectorization</p>
+						<p class="text-xs text-muted-foreground mt-1">Model for text vectorization, e.g. text-embedding-3-small</p>
 					</div>
 
 					<!-- Enable AI Toggle -->
@@ -417,8 +436,10 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 								<div class="text-sm text-muted-foreground">
 									{#if !canEnableAI}
 										Fill all fields above to enable
+									{:else if aiSettings.enabled}
+										AI assistant is active. Vector data is automatically built when you save diary entries.
 									{:else}
-										AI assistant is ready to use
+										Enable to use AI assistant. Vector data will be automatically built in the background when you save diary entries.
 									{/if}
 								</div>
 							</div>

@@ -7,7 +7,7 @@ COPY site/ ./
 RUN npm run build
 
 # Build stage for backend
-FROM golang:1.22-alpine AS backend-builder
+FROM golang:1.23-alpine AS backend-builder
 WORKDIR /app
 
 # Install git for version detection
@@ -32,7 +32,7 @@ RUN if [ -z "$VERSION" ]; then \
     go build -ldflags "-X main.Version=$VERSION" -o journitalia .
 
 # Final stage
-FROM alpine:latest
+FROM alpine:3.23.3
 WORKDIR /app
 
 # Install ca-certificates for HTTPS
