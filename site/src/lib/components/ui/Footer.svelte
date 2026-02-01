@@ -32,16 +32,14 @@
 
 <footer class="border-t border-border/50 mt-auto">
 	<div class="{maxWidthClass} mx-auto px-4 py-3">
-		<div class="flex items-center justify-between">
-			<div class="flex items-center gap-1.5 text-xs text-muted-foreground">
+		<div class="flex flex-col sm:flex-row items-center justify-center sm:justify-between gap-2 sm:gap-4">
+			<div class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
 				{#if tagline}
-					<span>{tagline}</span>
-					<span class="text-border">·</span>
+					<span class="whitespace-nowrap">{tagline}</span>
 				{/if}
-				<span>© {new Date().getFullYear()} Diarum</span>
+				<span class="whitespace-nowrap">© {new Date().getFullYear()} Diarum</span>
 				{#if version}
-					<span class="text-border">·</span>
-					<span class="font-mono text-[10px] px-1.5 py-0.5 bg-primary/10 text-primary/80 dark:bg-primary/15 dark:text-primary/90 rounded border border-primary/20">{version}</span>
+					<span class="font-mono text-[10px] text-muted-foreground/70 whitespace-nowrap">{version}</span>
 				{/if}
 			</div>
 			<ThemeToggle />
