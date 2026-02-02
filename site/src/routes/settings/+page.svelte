@@ -5,6 +5,7 @@
 	import { getApiToken, toggleApiToken, resetApiToken, type ApiTokenStatus } from '$lib/api/settings';
 	import { getAISettings, saveAISettings, fetchModels, buildVectors, buildVectorsIncremental, getVectorStats, type AISettings, type ModelInfo, type BuildVectorsResult, type VectorStats } from '$lib/api/ai';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import Footer from '$lib/components/ui/Footer.svelte';
 
 	let loading = true;
 	let tokenStatus: ApiTokenStatus = { exists: false, enabled: false, token: '' };
@@ -630,4 +631,6 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 			</div>
 		{/if}
 	</main>
+
+	<Footer maxWidth="4xl" tagline="Manage your settings" />
 </div>

@@ -17,6 +17,7 @@
 	import ChatInput from '$lib/components/chat/ChatInput.svelte';
 	import ConversationList from '$lib/components/chat/ConversationList.svelte';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
+	import ThemeToggle from '$lib/components/ui/ThemeToggle.svelte';
 
 	let conversations: Conversation[] = [];
 	let selectedConversationId: string | null = null;
@@ -28,6 +29,8 @@
 	let aiEnabled = false;
 	let sidebarOpen = false;
 	let messagesContainer: HTMLDivElement;
+	let chatError = '';
+	let version = '';
 
 	function closeSidebarOnMobile() {
 		if (window.innerWidth < 1024) {
@@ -88,10 +91,23 @@
 		}
 	}
 
+	async function fetchVersion() {
+		try {
+			const res = await fetch('/api/version');
+			if (res.ok) {
+				const data = await res.json();
+				version = data.version;
+			}
+		} catch (e) {
+			// Silently fail
+		}
+	}
+
 	async function handleSendMessage(content: string) {
 		if (isStreaming || !selectedConversationId) return;
 
 		const convId = selectedConversationId;
+		chatError = '';
 
 		// Add user message with unique ID
 		const userMsg: Message = {
@@ -110,6 +126,7 @@
 			for await (const chunk of streamChat(convId, content)) {
 				if (chunk.error) {
 					console.error('Stream error:', chunk.error);
+					chatError = chunk.error;
 					break;
 				}
 				if (chunk.title && convId) {
@@ -135,6 +152,7 @@
 			}
 		} catch (e) {
 			console.error('Failed to send message:', e);
+			chatError = e instanceof Error ? e.message : 'Failed to send message';
 		}
 
 		isStreaming = false;
@@ -146,6 +164,8 @@
 			goto('/login');
 			return;
 		}
+
+		fetchVersion();
 
 		const settings = await getAISettings();
 		aiEnabled = settings.enabled;
@@ -290,14 +310,33 @@
 				<!-- Input -->
 				<div class="border-t border-border/50 p-4 lg:p-6 bg-gradient-to-t from-card/80 to-card/50 backdrop-blur-sm flex-shrink-0">
 					<div class="max-w-3xl mx-auto">
+						{#if chatError}
+							<div class="mb-3 p-3 bg-destructive/10 text-destructive rounded-lg text-sm flex items-start gap-2">
+								<svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+								</svg>
+								<span>{chatError}</span>
+								<button on:click={() => chatError = ''} class="ml-auto p-0.5 hover:bg-destructive/20 rounded">
+									<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+						{/if}
 						<ChatInput
 							disabled={isStreaming}
 							placeholder="Ask about your diary..."
 							on:send={(e) => handleSendMessage(e.detail)}
 						/>
-						<p class="text-xs text-muted-foreground/60 text-center mt-3">
-							Press Enter to send, Shift+Enter for new line
-						</p>
+						<div class="flex items-center justify-center gap-2 mt-3 text-xs text-muted-foreground/60">
+							<span class="hidden sm:inline">Press Enter to send, Shift+Enter for new line ·</span>
+							<span>Diarum</span>
+							{#if version}
+								<span class="font-mono text-[10px]">{version}</span>
+							{/if}
+							<span class="hidden sm:inline">·</span>
+							<span class="hidden sm:block"><ThemeToggle /></span>
+						</div>
 					</div>
 				</div>
 			</main>
