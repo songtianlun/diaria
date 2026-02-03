@@ -10,6 +10,16 @@
 
 **Diarum** (Chinese: 吾身) - A simple, elegant, and self-hosted diary application built with PocketBase and modern web technologies.
 
+### Screenshots
+
+| Desktop Light | Desktop Dark |
+|:---:|:---:|
+| ![Desktop Light](docs/snapshots/desktop-light.png) | ![Desktop Dark](docs/snapshots/desktop-dark.png) |
+
+| Mobile Light | Mobile Dark |
+|:---:|:---:|
+| ![Mobile Light](docs/snapshots/mobile-light.png) | ![Mobile Dark](docs/snapshots/mobile-dark.png) |
+
 ### Features
 
 - 📝 **Markdown Support** - Write your daily thoughts with full Markdown formatting
@@ -156,14 +166,32 @@ Access the PocketBase admin panel at `http://localhost:8090/_/` to:
 
 **吾身** (Diarum) - 取自"吾日三省吾身"，一款零负担、快记录、怡复盘的日记应用，记录独一无二的人生。
 
-软件使用非常简单，登陆后打开首页即跳转到今日日记，可以立刻开始记录，自动保存。配置 AI Key 之后自动进行向量化，后续可以灵活的与 AI 结合日记向量库规划。自然快速地完成：
+零负担，软件使用非常简单，登陆后打开首页即跳转到今日日记。快记录，打开立刻开始记录，自动保存。怡复盘，可以愉快的完成复盘、总结分析。轻松实现现代化 AI 加持的“吾日三省吾身”。
+
+配置 AI Key 之后自动触发日记向量化，后续可以跟 AI LLM 结合日记开展对话 。自然快速地完成：
+
  - 今日复盘
  - 周报生成
  - 年终总结
  - 等等
 
-
 基于 PocketBase 和现代 Web 技术构建，简洁、优雅、可自托管。
+
+开发这款软件的初衷源自自己对日记的需求。现在市面上已经有很多优秀的日记和笔记软件。但都多少有点无法满足自己的需求。我期望的一个日记软件，是打开后立刻可以开始记录，不需要纠结文件名、标题、目录结构。最好是网页的，这样在各种设备都可以使用。我自己的设备涉及 MacBook 、HarmonyOS NEXT 、Android 、Arch Linux 、Windows 。只有网页应用能够很好的快速兼容这些平台。最好是可以很方便的自托管的，确保我自己对数据的掌控，且方便搬家。
+
+于是就做了这样一款软件，英文名叫 Diarum ，中文名叫 “吾身”。使用 go+svelte 开发，轻快好用。花费了大量心思打磨移动端和桌面端的日记体验。现在我个人感觉使用体验已经比较丝滑，可以愉快的记录一天的各种事情。
+
+在核心功能的基础上，集成了一个简单的 RAG 系统，配置好 AI KEY 和 MODEL 之后，会自动触发向量数据库的构建。这样一来跟内置的 AI 助手对话时，就可以将向量匹配到的日记放入上下文，方便的进行分析总结等。此外还提供了一个简单的 API 系统，可以方便的将日记数据对接到 n8n 这样的平台，实现自动化的周报、月报生成等灵活的工作流。
+
+### 截图预览
+
+| 桌面端浅色 | 桌面端深色 |
+|:---:|:---:|
+| ![桌面端浅色](docs/snapshots/desktop-light.png) | ![桌面端深色](docs/snapshots/desktop-dark.png) |
+
+| 移动端浅色 | 移动端深色 |
+|:---:|:---:|
+| ![移动端浅色](docs/snapshots/mobile-light.png) | ![移动端深色](docs/snapshots/mobile-dark.png) |
 
 ### 主要功能
 
@@ -262,37 +290,21 @@ docker compose up -d
 git clone https://github.com/songtianlun/diarum.git
 cd diarum
 
-# 构建前端
-cd site
-npm install
-npm run build
-cd ..
-
-# 构建后端
-go build -o diarum .
+# 全量构建
+make build
 
 # 运行
-./diarum serve
-```
-
-或使用 Makefile：
-
-```bash
-make build
 ./diarum serve
 ```
 
 ### 开发
 
 ```bash
-# 使用热重载运行（需要 air）
-make dev
+# 启动前端开发服务器
+make dev-frontend
 
-# 构建 Docker 镜像
-make docker-build
-
-# 运行测试
-make test
+# 启动后端开发服务器
+make dev-backend
 ```
 
 ### 管理面板
