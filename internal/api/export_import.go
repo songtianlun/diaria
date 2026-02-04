@@ -478,7 +478,7 @@ func handleImport(c echo.Context, app *pocketbase.PocketBase, embeddingService *
 				continue
 			}
 
-			// 检查文件是否存在于 ZIP 中
+			// Check if file exists in ZIP
 			fileBytes, ok := mediaFiles[m.File]
 			if !ok {
 				logger.Warn("[Import] media file %s not found in ZIP", m.File)
@@ -486,7 +486,17 @@ func handleImport(c echo.Context, app *pocketbase.PocketBase, embeddingService *
 				continue
 			}
 
-			// 修复 diary 关联（旧 ID -> 新 ID）
+			// Check if media with same ID already exists - skip if so
+			if m.ID != "" {
+				existing, _ := app.Dao().FindRecordById("media", m.ID)
+				if existing != nil {
+					logger.Info("[Import] media %s already exists, skipping", m.ID)
+					stats.Media.Skipped++
+					continue
+				}
+			}
+
+			// Fix diary relations (old ID -> new ID)
 			var newDiaryIDs []string
 			for _, oldID := range m.Diary {
 				if newID, exists := diaryIDMap[oldID]; exists && newID != "" {
@@ -543,7 +553,17 @@ func handleImport(c echo.Context, app *pocketbase.PocketBase, embeddingService *
 
 	if convCollection != nil && err == nil && msgCollection != nil && err2 == nil {
 		for _, conv := range data.Conversations {
-			// 创建对话记录
+			// Check if conversation with same ID already exists - skip if so
+			if conv.ID != "" {
+				existing, _ := app.Dao().FindRecordById("ai_conversations", conv.ID)
+				if existing != nil {
+					logger.Info("[Import] conversation %s already exists, skipping", conv.ID)
+					stats.Conversations.Skipped++
+					continue
+				}
+			}
+
+			// Create conversation record
 			convRecord := models.NewRecord(convCollection)
 			convRecord.Set("title", conv.Title)
 			convRecord.Set("owner", userID)
@@ -554,8 +574,17 @@ func handleImport(c echo.Context, app *pocketbase.PocketBase, embeddingService *
 				continue
 			}
 
-			// 导入消息
+			// Import messages
 			for _, msg := range conv.Messages {
+				// Check if message with same ID already exists - skip if so
+				if msg.ID != "" {
+					existing, _ := app.Dao().FindRecordById("ai_messages", msg.ID)
+					if existing != nil {
+						logger.Info("[Import] message %s already exists, skipping", msg.ID)
+						continue
+					}
+				}
+
 				msgRecord := models.NewRecord(msgCollection)
 				msgRecord.Set("conversation", convRecord.Id)
 				msgRecord.Set("role", msg.Role)
