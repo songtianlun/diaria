@@ -555,8 +555,8 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 
 					<!-- Enable AI Toggle -->
 					<div class="py-4 border-b border-border/50">
-						<div class="flex items-center justify-between">
-							<div>
+						<div class="flex items-center justify-between gap-4">
+							<div class="min-w-0 flex-1">
 								<div class="font-medium text-foreground">Enable AI Features</div>
 								<div class="text-sm text-muted-foreground">
 									{#if !canEnableAI}
@@ -571,7 +571,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 							<button
 								on:click={() => { if (canEnableAI) aiSettings.enabled = !aiSettings.enabled; }}
 								disabled={!canEnableAI && !aiSettings.enabled}
-								class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 {aiSettings.enabled ? 'bg-primary' : 'bg-muted'} {!canEnableAI && !aiSettings.enabled ? 'opacity-50 cursor-not-allowed' : ''}"
+								class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 {aiSettings.enabled ? 'bg-primary' : 'bg-muted'} {!canEnableAI && !aiSettings.enabled ? 'opacity-50 cursor-not-allowed' : ''}"
 							>
 								<span
 									class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 {aiSettings.enabled ? 'translate-x-6' : 'translate-x-1'}"
