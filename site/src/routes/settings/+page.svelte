@@ -7,6 +7,18 @@
 	import { exportDiaries, importDiaries, type ExportStats, type ImportStats, type ExportOptions } from '$lib/api/exportImport';
 	import PageHeader from '$lib/components/ui/PageHeader.svelte';
 	import Footer from '$lib/components/ui/Footer.svelte';
+	import SettingsToc from '$lib/components/ui/SettingsToc.svelte';
+
+	// TOC state
+	let showMobileToc = false;
+	let showDesktopToc = true;
+	let isMobile = false;
+
+	function checkMobile() {
+		if (typeof window !== 'undefined') {
+			isMobile = window.innerWidth < 1024;
+		}
+	}
 
 	let loading = true;
 	let tokenStatus: ApiTokenStatus = { exists: false, enabled: false, token: '' };
@@ -266,6 +278,12 @@
 			goto('/login');
 			return;
 		}
+
+		// Initialize mobile detection
+		checkMobile();
+		showDesktopToc = !isMobile;
+		window.addEventListener('resize', checkMobile);
+
 		loading = true;
 		await Promise.all([loadTokenStatus(), loadAISettings()]);
 		loading = false;
@@ -273,6 +291,10 @@
 		if (aiSettings.enabled) {
 			await loadVectorStats();
 		}
+
+		return () => {
+			window.removeEventListener('resize', checkMobile);
+		};
 	});
 </script>
 
@@ -281,11 +303,56 @@
 </svelte:head>
 
 <div class="min-h-screen bg-background">
-	<PageHeader title="Settings" />
+	<!-- Sticky Header Container -->
+	<div class="sticky top-0 z-20">
+		<!-- Header -->
+		<header class="glass border-b border-border/50">
+			<div class="max-w-6xl mx-auto px-4 h-11">
+				<div class="flex items-center justify-between h-full">
+					<!-- Left: Brand -->
+					<a href="/" class="text-lg font-semibold text-foreground hover:text-primary transition-colors">Diarum</a>
+
+					<!-- Center: Title -->
+					<div class="text-sm font-medium text-foreground">Settings</div>
+
+					<!-- Right: Actions -->
+					<div class="flex items-center gap-2">
+						<button
+							on:click={() => {
+								if (window.innerWidth >= 1024) {
+									showDesktopToc = !showDesktopToc;
+								} else {
+									showMobileToc = !showMobileToc;
+								}
+							}}
+							class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200 {(showDesktopToc || showMobileToc) ? 'bg-muted/50' : ''}"
+							title="Table of contents"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+							</svg>
+						</button>
+					</div>
+				</div>
+			</div>
+		</header>
+
+		<!-- Mobile TOC - Inside sticky container -->
+		{#if showMobileToc}
+			<div class="lg:hidden glass-subtle border-b border-border/50 animate-slide-in-down">
+				<div class="max-w-6xl mx-auto px-4 py-3">
+					<SettingsToc />
+				</div>
+			</div>
+		{/if}
+	</div>
 
 	<!-- Main Content -->
-	<main class="max-w-4xl mx-auto px-4 py-6">
-		{#if loading}
+	<div class="max-w-6xl mx-auto px-4 py-6">
+		<div class="flex gap-6 {showDesktopToc ? '' : 'justify-center'}">
+			<!-- Settings Content -->
+			<main class="flex-1 min-w-0 max-w-4xl {showDesktopToc ? 'lg:mx-0' : 'mx-auto'}">
+				{#if loading}
 			<div class="flex flex-col items-center justify-center py-20 gap-3">
 				<svg class="w-6 h-6 animate-spin text-primary" fill="none" viewBox="0 0 24 24">
 					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -296,7 +363,7 @@
 		{:else}
 			<div class="space-y-6">
 				<!-- API Settings Section -->
-				<div class="bg-card rounded-xl shadow-sm border border-border/50 p-6 animate-fade-in">
+				<div id="api-access" class="bg-card rounded-xl shadow-sm border border-border/50 p-6 animate-fade-in scroll-mt-16">
 					<h2 class="text-lg font-semibold text-foreground mb-4">API Access</h2>
 					<p class="text-sm text-muted-foreground mb-6">
 						Enable API access to retrieve your diary entries programmatically. Use your API token to authenticate requests.
@@ -384,7 +451,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 				</div>
 
 				<!-- AI Settings Section -->
-				<div class="bg-card rounded-xl shadow-sm border border-border/50 p-6 animate-fade-in">
+				<div id="ai-assistant" class="bg-card rounded-xl shadow-sm border border-border/50 p-6 animate-fade-in scroll-mt-16">
 					<h2 class="text-lg font-semibold text-foreground mb-4">AI Assistant</h2>
 					<p class="text-sm text-muted-foreground mb-6">
 						Configure AI services for intelligent diary analysis and conversation. Supports OpenAI-compatible APIs.
@@ -687,7 +754,7 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 				</div>
 
 				<!-- Data Management Section -->
-				<div class="bg-card rounded-xl shadow-sm border border-border/50 p-6 animate-fade-in">
+				<div id="data-management" class="bg-card rounded-xl shadow-sm border border-border/50 p-6 animate-fade-in scroll-mt-16">
 					<h2 class="text-lg font-semibold text-foreground mb-4">Data Management</h2>
 					<p class="text-sm text-muted-foreground mb-6">
 						Import and export your diary data. To avoid large export files, you can export data in segments by date range.
@@ -928,5 +995,18 @@ curl "{getBaseUrl()}/api/v1/diaries?token={tokenStatus.token}&date={new Date().t
 		{/if}
 	</main>
 
-	<Footer maxWidth="4xl" tagline="Manage your settings" />
+			<!-- Desktop TOC Sidebar -->
+			{#if showDesktopToc}
+				<aside class="hidden lg:block w-56 flex-shrink-0">
+					<div class="sticky top-16 animate-slide-in-right">
+						<div class="bg-card/50 rounded-xl border border-border/50 p-4">
+							<SettingsToc />
+						</div>
+					</div>
+				</aside>
+			{/if}
+		</div>
+	</div>
+
+	<Footer maxWidth="6xl" tagline="Manage your settings" />
 </div>
