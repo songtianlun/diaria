@@ -22,7 +22,7 @@ import (
 	"github.com/songtianlun/diarum/internal/logger"
 )
 
-const maxImportSize = 100 << 20     // 100MB total upload
+const maxImportSize = 200 << 20     // 200MB total upload
 const maxSingleFileSize = 100 << 20 // 100MB per file (ZIP bomb protection)
 
 // ---------- Export Request ----------
@@ -426,7 +426,7 @@ func handleImport(c echo.Context, app *pocketbase.PocketBase, embeddingService *
 		return apis.NewBadRequestError("Missing upload file", err)
 	}
 	if fh.Size > maxImportSize {
-		return apis.NewBadRequestError("File too large (max 100MB). Please use segmented export with date range filters to create smaller export files, then import them separately.", nil)
+		return apis.NewBadRequestError("File too large (max 200MB). Please use segmented export with date range filters to create smaller export files, then import them separately.", nil)
 	}
 
 	f, err := fh.Open()
@@ -440,7 +440,7 @@ func handleImport(c echo.Context, app *pocketbase.PocketBase, embeddingService *
 		return apis.NewBadRequestError("Failed to read upload", err)
 	}
 	if int64(len(zipBytes)) > maxImportSize {
-		return apis.NewBadRequestError("File too large (max 100MB). Please use segmented export with date range filters to create smaller export files, then import them separately.", nil)
+		return apis.NewBadRequestError("File too large (max 200MB). Please use segmented export with date range filters to create smaller export files, then import them separately.", nil)
 	}
 
 	// 解压 ZIP
