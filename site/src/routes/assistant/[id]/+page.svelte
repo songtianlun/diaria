@@ -159,6 +159,12 @@
 		await loadConversations();
 	}
 
+	// Reactive statement to handle URL changes
+	$: if ($page.params.id && $page.params.id !== selectedConversationId && !loading && aiEnabled) {
+		selectedConversationId = $page.params.id;
+		loadMessages($page.params.id);
+	}
+
 	onMount(async () => {
 		if (!$isAuthenticated) {
 			goto('/login');

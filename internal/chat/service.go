@@ -243,7 +243,12 @@ func (s *ChatService) buildSystemPrompt(diaries []embedding.DiarySearchResult) s
 	if len(diaries) > 0 {
 		sb.WriteString("Here are relevant diary entries from the user:\n\n")
 		for i, diary := range diaries {
-			sb.WriteString(fmt.Sprintf("--- Diary Entry %d (Date: %s) ---\n", i+1, diary.Date))
+			// Parse date and get weekday
+			weekday := ""
+			if t, err := time.Parse("2006-01-02", diary.Date); err == nil {
+				weekday = t.Weekday().String()
+			}
+			sb.WriteString(fmt.Sprintf("--- Diary Entry %d (Date: %s, %s) ---\n", i+1, diary.Date, weekday))
 			if diary.Mood != "" {
 				sb.WriteString(fmt.Sprintf("Mood: %s\n", diary.Mood))
 			}
@@ -644,7 +649,12 @@ func (s *ChatService) formatDiariesForContext(diaries []embedding.DiarySearchRes
 	sb.WriteString(fmt.Sprintf("Found %d diary entries:\n\n", len(diaries)))
 
 	for i, diary := range diaries {
-		sb.WriteString(fmt.Sprintf("--- Diary Entry %d (Date: %s) ---\n", i+1, diary.Date))
+		// Parse date and get weekday
+		weekday := ""
+		if t, err := time.Parse("2006-01-02", diary.Date); err == nil {
+			weekday = t.Weekday().String()
+		}
+		sb.WriteString(fmt.Sprintf("--- Diary Entry %d (Date: %s, %s) ---\n", i+1, diary.Date, weekday))
 		if diary.Mood != "" {
 			sb.WriteString(fmt.Sprintf("Mood: %s\n", diary.Mood))
 		}
