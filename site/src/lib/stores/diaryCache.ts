@@ -1,11 +1,23 @@
 import { writable, get } from 'svelte/store';
+import { browser } from '$app/environment';
 import type { Diary } from '$lib/api/client';
+import {
+	loadPersistedData,
+	persistEntry,
+	removePersistedEntry,
+	getAllPersistedEntries,
+	cleanupOldEntries,
+	isInCacheRange,
+	type PersistedEntry
+} from './persistence';
+import { checkOnlineStatus, initOnlineStatus } from './onlineStatus';
+import { syncConfig, getConfig, initSyncConfig } from './syncConfig';
 
-interface CacheEntry {
+export interface CacheEntry {
 	content: string;
-	localUpdatedAt: number;  // Local modification timestamp
-	serverUpdatedAt: string | null;  // Server updated timestamp
-	isDirty: boolean;  // Has unsaved changes
+	localUpdatedAt: number;
+	serverUpdatedAt: string | null;
+	isDirty: boolean;
 }
 
 interface DiaryCache {
@@ -19,6 +31,12 @@ interface SyncState {
 	message: string;
 }
 
+export interface CacheStats {
+	totalCached: number;
+	pendingSync: number;
+	entries: { date: string; isDirty: boolean; localUpdatedAt: number }[];
+}
+
 // Cache store
 export const diaryCache = writable<DiaryCache>({});
 
@@ -30,9 +48,90 @@ export const syncState = writable<SyncState>({
 	message: ''
 });
 
+// Cache statistics store
+export const cacheStats = writable<CacheStats>({
+	totalCached: 0,
+	pendingSync: 0,
+	entries: []
+});
+
 // Sync timer
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
-const SYNC_INTERVAL = 3000; // 3 seconds
+let initialized = false;
+let cleanupOnlineStatus: (() => void) | null = null;
+
+/**
+ * Initialize the diary cache system
+ */
+export function initDiaryCache(): void {
+	if (!browser || initialized) return;
+	initialized = true;
+
+	// Initialize dependencies
+	initSyncConfig();
+	cleanupOnlineStatus = initOnlineStatus();
+
+	// Load persisted data
+	const persisted = loadPersistedData();
+	const cache: DiaryCache = {};
+
+	for (const [date, entry] of Object.entries(persisted.entries)) {
+		cache[date] = {
+			content: entry.content,
+			localUpdatedAt: entry.localUpdatedAt,
+			serverUpdatedAt: entry.serverUpdatedAt,
+			isDirty: entry.isDirty
+		};
+	}
+
+	diaryCache.set(cache);
+	updateCacheStats();
+
+	// Clean up old entries on startup
+	const config = getConfig();
+	cleanupOldEntries(config.cacheDays);
+
+	// Subscribe to config changes for interval updates
+	syncConfig.subscribe(() => {
+		// Config changed, timer will use new interval on next schedule
+	});
+}
+
+/**
+ * Cleanup function for when app unmounts
+ */
+export function cleanupDiaryCache(): void {
+	if (syncTimer) {
+		clearTimeout(syncTimer);
+		syncTimer = null;
+	}
+	if (cleanupOnlineStatus) {
+		cleanupOnlineStatus();
+		cleanupOnlineStatus = null;
+	}
+	initialized = false;
+}
+
+/**
+ * Update cache statistics
+ */
+function updateCacheStats(): void {
+	const cache = get(diaryCache);
+	const entries = Object.entries(cache).map(([date, entry]) => ({
+		date,
+		isDirty: entry.isDirty,
+		localUpdatedAt: entry.localUpdatedAt
+	}));
+
+	// Sort by date descending
+	entries.sort((a, b) => b.date.localeCompare(a.date));
+
+	cacheStats.set({
+		totalCached: entries.length,
+		pendingSync: entries.filter(e => e.isDirty).length,
+		entries
+	});
+}
 
 /**
  * Get cached content for a date
@@ -45,19 +144,31 @@ export function getCachedContent(date: string): CacheEntry | null {
 /**
  * Update local cache with edited content
  */
-export function updateLocalCache(date: string, content: string) {
-	diaryCache.update(cache => {
-		const existing = cache[date];
-		return {
-			...cache,
-			[date]: {
-				content,
-				localUpdatedAt: Date.now(),
-				serverUpdatedAt: existing?.serverUpdatedAt || null,
-				isDirty: true
-			}
-		};
+export function updateLocalCache(date: string, content: string): void {
+	const existing = getCachedContent(date);
+
+	const entry: CacheEntry = {
+		content,
+		localUpdatedAt: Date.now(),
+		serverUpdatedAt: existing?.serverUpdatedAt || null,
+		isDirty: true
+	};
+
+	diaryCache.update(cache => ({
+		...cache,
+		[date]: entry
+	}));
+
+	// Persist to localStorage
+	persistEntry({
+		date,
+		content,
+		localUpdatedAt: entry.localUpdatedAt,
+		serverUpdatedAt: entry.serverUpdatedAt,
+		isDirty: true
 	});
+
+	updateCacheStats();
 
 	// Schedule sync
 	scheduleSyncToServer();
@@ -66,30 +177,43 @@ export function updateLocalCache(date: string, content: string) {
 /**
  * Update cache from server data
  */
-export function updateFromServer(date: string, diary: Diary | null) {
+export function updateFromServer(date: string, diary: Diary | null): void {
 	const cache = get(diaryCache);
 	const existing = cache[date];
 
 	const serverContent = diary?.content || '';
 	const serverUpdated = diary?.updated || null;
 
-	// If local cache exists and is dirty, compare timestamps
+	// If local cache exists and is dirty, keep local changes
 	if (existing && existing.isDirty) {
-		// Server data is newer - this shouldn't normally happen
-		// but if it does, we keep local changes and mark for sync
 		return;
 	}
 
-	// Update cache with server data
+	const entry: CacheEntry = {
+		content: serverContent,
+		localUpdatedAt: Date.now(),
+		serverUpdatedAt: serverUpdated,
+		isDirty: false
+	};
+
 	diaryCache.update(c => ({
 		...c,
-		[date]: {
+		[date]: entry
+	}));
+
+	// Persist to localStorage (within cache range)
+	const config = getConfig();
+	if (isInCacheRange(date, config.cacheDays)) {
+		persistEntry({
+			date,
 			content: serverContent,
-			localUpdatedAt: Date.now(),
+			localUpdatedAt: entry.localUpdatedAt,
 			serverUpdatedAt: serverUpdated,
 			isDirty: false
-		}
-	}));
+		});
+	}
+
+	updateCacheStats();
 }
 
 /**
@@ -120,9 +244,25 @@ export function getDirtyEntries(): { date: string; content: string }[] {
 }
 
 /**
+ * Get all unsynced entries with details
+ */
+export function getUnsyncedEntries(): PersistedEntry[] {
+	const cache = get(diaryCache);
+	return Object.entries(cache)
+		.filter(([_, entry]) => entry.isDirty)
+		.map(([date, entry]) => ({
+			date,
+			content: entry.content,
+			localUpdatedAt: entry.localUpdatedAt,
+			serverUpdatedAt: entry.serverUpdatedAt,
+			isDirty: true
+		}));
+}
+
+/**
  * Mark entry as synced
  */
-export function markAsSynced(date: string, serverUpdatedAt: string) {
+export function markAsSynced(date: string, serverUpdatedAt: string): void {
 	diaryCache.update(cache => {
 		if (!cache[date]) return cache;
 		return {
@@ -134,25 +274,47 @@ export function markAsSynced(date: string, serverUpdatedAt: string) {
 			}
 		};
 	});
+
+	// Update persistence
+	const cache = get(diaryCache);
+	const entry = cache[date];
+	if (entry) {
+		const config = getConfig();
+		if (isInCacheRange(date, config.cacheDays)) {
+			persistEntry({
+				date,
+				content: entry.content,
+				localUpdatedAt: entry.localUpdatedAt,
+				serverUpdatedAt,
+				isDirty: false
+			});
+		} else {
+			// Outside cache range and synced, remove from persistence
+			removePersistedEntry(date);
+		}
+	}
+
+	updateCacheStats();
 }
 
 /**
  * Schedule sync to server
  */
-function scheduleSyncToServer() {
+function scheduleSyncToServer(): void {
 	if (syncTimer) {
 		clearTimeout(syncTimer);
 	}
 
+	const config = getConfig();
 	syncTimer = setTimeout(() => {
 		syncDirtyEntries();
-	}, SYNC_INTERVAL);
+	}, config.autoSaveInterval);
 }
 
 /**
  * Sync all dirty entries to server
  */
-async function syncDirtyEntries() {
+async function syncDirtyEntries(): Promise<void> {
 	const dirtyEntries = getDirtyEntries();
 
 	if (dirtyEntries.length === 0) {
@@ -162,6 +324,20 @@ async function syncDirtyEntries() {
 			status: 'idle',
 			message: ''
 		});
+		return;
+	}
+
+	// Check online status first
+	const online = await checkOnlineStatus();
+	if (!online) {
+		syncState.set({
+			isSyncing: false,
+			currentDate: null,
+			status: 'error',
+			message: 'Offline'
+		});
+		// Retry later
+		scheduleSyncToServer();
 		return;
 	}
 
@@ -193,6 +369,8 @@ async function syncDirtyEntries() {
 				status: 'error',
 				message: 'Failed to save'
 			});
+			// Retry later
+			scheduleSyncToServer();
 			return;
 		}
 	}
@@ -226,6 +404,18 @@ export async function forceSyncNow(): Promise<boolean> {
 
 	const dirtyEntries = getDirtyEntries();
 	if (dirtyEntries.length === 0) return true;
+
+	// Check online status
+	const online = await checkOnlineStatus();
+	if (!online) {
+		syncState.set({
+			isSyncing: false,
+			currentDate: null,
+			status: 'error',
+			message: 'Offline'
+		});
+		return false;
+	}
 
 	syncState.set({
 		isSyncing: true,
@@ -288,16 +478,65 @@ export async function forceSyncNow(): Promise<boolean> {
 /**
  * Clear cache for a specific date
  */
-export function clearCache(date: string) {
+export function clearCache(date: string): void {
 	diaryCache.update(cache => {
 		const { [date]: _, ...rest } = cache;
 		return rest;
 	});
+	removePersistedEntry(date);
+	updateCacheStats();
 }
 
 /**
  * Clear all cache
  */
-export function clearAllCache() {
+export function clearAllCache(): void {
 	diaryCache.set({});
+	const persisted = getAllPersistedEntries();
+	for (const date of Object.keys(persisted)) {
+		removePersistedEntry(date);
+	}
+	updateCacheStats();
+}
+
+/**
+ * Clear only synced entries from cache
+ */
+export function clearSyncedCache(): void {
+	const cache = get(diaryCache);
+	const newCache: DiaryCache = {};
+
+	for (const [date, entry] of Object.entries(cache)) {
+		if (entry.isDirty) {
+			newCache[date] = entry;
+		} else {
+			removePersistedEntry(date);
+		}
+	}
+
+	diaryCache.set(newCache);
+	updateCacheStats();
+}
+
+/**
+ * Run cache cleanup based on config
+ */
+export function runCacheCleanup(): number {
+	const config = getConfig();
+	const removed = cleanupOldEntries(config.cacheDays);
+
+	// Also update in-memory cache
+	const cache = get(diaryCache);
+	const newCache: DiaryCache = {};
+
+	for (const [date, entry] of Object.entries(cache)) {
+		if (entry.isDirty || isInCacheRange(date, config.cacheDays)) {
+			newCache[date] = entry;
+		}
+	}
+
+	diaryCache.set(newCache);
+	updateCacheStats();
+
+	return removed;
 }
