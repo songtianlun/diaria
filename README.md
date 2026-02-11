@@ -1,5 +1,9 @@
 # Diarum
 
+<p align="center">
+  <img src="site/static/logo.png" alt="Diarum Logo" width="120" />
+</p>
+
 [English](#english) | [中文](#中文)
 
 ---
@@ -14,16 +18,17 @@
 
 | Desktop Light | Desktop Dark |
 |:---:|:---:|
-| ![Desktop Light](docs/snapshots/desktop-light.png) | ![Desktop Dark](docs/snapshots/desktop-dark.png) |
+| ![Desktop Light](site/static/screenshots/desktop-light.png) | ![Desktop Dark](site/static/screenshots/desktop-dark.png) |
 
 | Mobile Light | Mobile Dark |
 |:---:|:---:|
-| ![Mobile Light](docs/snapshots/mobile-light.png) | ![Mobile Dark](docs/snapshots/mobile-dark.png) |
+| ![Mobile Light](site/static/screenshots/mobile-light.png) | ![Mobile Dark](site/static/screenshots/mobile-dark.png) |
 
 ### Features
 
 - 📝 **Markdown Support** - Write your daily thoughts with full Markdown formatting
 - 🖼️ **Media Upload** - Attach images and files to your diary entries
+- 📱 **Progressive Web App** - Install on any device with offline support and app-like experience
 - 🔒 **Self-Hosted** - Complete control over your personal data
 - 🚀 **Easy Deployment** - Single binary with embedded frontend, deploy anywhere
 - 💾 **PocketBase Backend** - Reliable database with built-in admin panel
@@ -187,16 +192,17 @@ Access the PocketBase admin panel at `http://localhost:8090/_/` to:
 
 | 桌面端浅色 | 桌面端深色 |
 |:---:|:---:|
-| ![桌面端浅色](docs/snapshots/desktop-light.png) | ![桌面端深色](docs/snapshots/desktop-dark.png) |
+| ![桌面端浅色](site/static/screenshots/desktop-light.png) | ![桌面端深色](site/static/screenshots/desktop-dark.png) |
 
 | 移动端浅色 | 移动端深色 |
 |:---:|:---:|
-| ![移动端浅色](docs/snapshots/mobile-light.png) | ![移动端深色](docs/snapshots/mobile-dark.png) |
+| ![移动端浅色](site/static/screenshots/mobile-light.png) | ![移动端深色](site/static/screenshots/mobile-dark.png) |
 
 ### 主要功能
 
 - 📝 **Markdown 支持** - 使用完整的 Markdown 格式记录每日想法
 - 🖼️ **媒体上传** - 为日记条目添加图片和文件
+- 📱 **渐进式 Web 应用** - 支持安装到任意设备，离线可用，原生应用般的体验
 - 🔒 **自托管** - 完全掌控你的个人数据
 - 🚀 **易于部署** - 单一二进制文件，内嵌前端，随处部署
 - 💾 **PocketBase 后端** - 可靠的数据库和内置管理面板
