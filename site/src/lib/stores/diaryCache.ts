@@ -57,8 +57,18 @@ export const cacheStats = writable<CacheStats>({
 
 // Sync timer
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
 let initialized = false;
 let cleanupOnlineStatus: (() => void) | null = null;
+let unsubscribeSyncConfig: (() => void) | null = null;
+
+// Retry state for offline sync
+let retryCount = 0;
+const MAX_RETRY_INTERVAL = 60000; // Max 60 seconds between retries
+const BASE_RETRY_INTERVAL = 3000; // Start with 3 seconds
+
+// Pending persistence queue
+let pendingPersist: Map<string, PersistedEntry> = new Map();
 
 /**
  * Initialize the diary cache system
@@ -91,8 +101,8 @@ export function initDiaryCache(): void {
 	const config = getConfig();
 	cleanupOldEntries(config.cacheDays);
 
-	// Subscribe to config changes for interval updates
-	syncConfig.subscribe(() => {
+	// Subscribe to config changes - save unsubscribe for cleanup
+	unsubscribeSyncConfig = syncConfig.subscribe(() => {
 		// Config changed, timer will use new interval on next schedule
 	});
 }
@@ -105,11 +115,50 @@ export function cleanupDiaryCache(): void {
 		clearTimeout(syncTimer);
 		syncTimer = null;
 	}
+	if (persistTimer) {
+		clearTimeout(persistTimer);
+		persistTimer = null;
+	}
 	if (cleanupOnlineStatus) {
 		cleanupOnlineStatus();
 		cleanupOnlineStatus = null;
 	}
+	if (unsubscribeSyncConfig) {
+		unsubscribeSyncConfig();
+		unsubscribeSyncConfig = null;
+	}
+	// Flush any pending persistence
+	flushPendingPersist();
+	retryCount = 0;
 	initialized = false;
+}
+
+/**
+ * Flush pending persistence immediately
+ */
+function flushPendingPersist(): void {
+	if (pendingPersist.size > 0) {
+		for (const entry of pendingPersist.values()) {
+			persistEntry(entry);
+		}
+		pendingPersist.clear();
+	}
+}
+
+/**
+ * Debounced persistence - batches writes to localStorage
+ */
+function debouncedPersist(entry: PersistedEntry): void {
+	pendingPersist.set(entry.date, entry);
+
+	if (persistTimer) {
+		clearTimeout(persistTimer);
+	}
+
+	persistTimer = setTimeout(() => {
+		flushPendingPersist();
+		persistTimer = null;
+	}, 300); // 300ms debounce for persistence
 }
 
 /**
@@ -159,8 +208,8 @@ export function updateLocalCache(date: string, content: string): void {
 		[date]: entry
 	}));
 
-	// Persist to localStorage
-	persistEntry({
+	// Debounced persist to localStorage
+	debouncedPersist({
 		date,
 		content,
 		localUpdatedAt: entry.localUpdatedAt,
@@ -298,17 +347,27 @@ export function markAsSynced(date: string, serverUpdatedAt: string): void {
 }
 
 /**
- * Schedule sync to server
+ * Schedule sync to server with exponential backoff for retries
  */
-function scheduleSyncToServer(): void {
+function scheduleSyncToServer(isRetry: boolean = false): void {
 	if (syncTimer) {
 		clearTimeout(syncTimer);
 	}
 
 	const config = getConfig();
+	let interval = config.autoSaveInterval;
+
+	// Use exponential backoff for retries
+	if (isRetry) {
+		interval = Math.min(BASE_RETRY_INTERVAL * Math.pow(2, retryCount), MAX_RETRY_INTERVAL);
+		retryCount++;
+	} else {
+		retryCount = 0; // Reset retry count for new edits
+	}
+
 	syncTimer = setTimeout(() => {
 		syncDirtyEntries();
-	}, config.autoSaveInterval);
+	}, interval);
 }
 
 /**
@@ -336,10 +395,13 @@ async function syncDirtyEntries(): Promise<void> {
 			status: 'error',
 			message: 'Offline'
 		});
-		// Retry later
-		scheduleSyncToServer();
+		// Retry later with exponential backoff
+		scheduleSyncToServer(true);
 		return;
 	}
+
+	// Reset retry count on successful online check
+	retryCount = 0;
 
 	syncState.set({
 		isSyncing: true,
@@ -369,8 +431,8 @@ async function syncDirtyEntries(): Promise<void> {
 				status: 'error',
 				message: 'Failed to save'
 			});
-			// Retry later
-			scheduleSyncToServer();
+			// Retry later with exponential backoff
+			scheduleSyncToServer(true);
 			return;
 		}
 	}

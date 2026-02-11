@@ -24,9 +24,10 @@
 		getCachedContent,
 		forceSyncNow,
 		hasDirtyCache,
-		initDiaryCache
+		initDiaryCache,
+		cleanupDiaryCache
 	} from '$lib/stores/diaryCache';
-	import { onlineState, initOnlineStatus } from '$lib/stores/onlineStatus';
+	import { onlineState } from '$lib/stores/onlineStatus';
 
 	let content = '';
 	let loading = true;
@@ -100,24 +101,19 @@
 
 	let previousDate = '';
 
-	let cleanupOnlineStatus: (() => void) | null = null;
-
 	onMount(() => {
 		if (!$isAuthenticated) {
 			goto('/login');
 			return;
 		}
 
-		// Initialize diary cache and online status
+		// Initialize diary cache (includes online status)
 		initDiaryCache();
-		cleanupOnlineStatus = initOnlineStatus();
 
 		window.addEventListener('keydown', handleKeyboard);
 		return () => {
 			window.removeEventListener('keydown', handleKeyboard);
-			if (cleanupOnlineStatus) {
-				cleanupOnlineStatus();
-			}
+			// Note: Don't cleanup diaryCache here as it's shared across pages
 		};
 	});
 

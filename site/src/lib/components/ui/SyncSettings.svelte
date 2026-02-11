@@ -71,8 +71,8 @@
 	}
 
 	onMount(() => {
+		// initDiaryCache is idempotent, safe to call multiple times
 		initDiaryCache();
-		checkOnlineStatus();
 
 		// Initialize from config
 		autoSaveSeconds = $syncConfig.autoSaveInterval / 1000;
