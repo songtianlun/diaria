@@ -18,11 +18,11 @@
 
 | Desktop Light | Desktop Dark |
 |:---:|:---:|
-| ![Desktop Light](docs/snapshots/desktop-light.png) | ![Desktop Dark](docs/snapshots/desktop-dark.png) |
+| ![Desktop Light](site/static/screenshots/desktop-light.png) | ![Desktop Dark](site/static/screenshots/desktop-dark.png) |
 
 | Mobile Light | Mobile Dark |
 |:---:|:---:|
-| ![Mobile Light](docs/snapshots/mobile-light.png) | ![Mobile Dark](docs/snapshots/mobile-dark.png) |
+| ![Mobile Light](site/static/screenshots/mobile-light.png) | ![Mobile Dark](site/static/screenshots/mobile-dark.png) |
 
 ### Features
 
@@ -192,11 +192,11 @@ Access the PocketBase admin panel at `http://localhost:8090/_/` to:
 
 | 桌面端浅色 | 桌面端深色 |
 |:---:|:---:|
-| ![桌面端浅色](docs/snapshots/desktop-light.png) | ![桌面端深色](docs/snapshots/desktop-dark.png) |
+| ![桌面端浅色](site/static/screenshots/desktop-light.png) | ![桌面端深色](site/static/screenshots/desktop-dark.png) |
 
 | 移动端浅色 | 移动端深色 |
 |:---:|:---:|
-| ![移动端浅色](docs/snapshots/mobile-light.png) | ![移动端深色](docs/snapshots/mobile-dark.png) |
+| ![移动端浅色](site/static/screenshots/mobile-light.png) | ![移动端深色](site/static/screenshots/mobile-dark.png) |
 
 ### 主要功能
 

@@ -27,13 +27,55 @@ export default defineConfig({
 						src: '/android-chrome-192x192.png',
 						sizes: '192x192',
 						type: 'image/png',
-						purpose: 'any maskable'
+						purpose: 'any'
+					},
+					{
+						src: '/android-chrome-192x192.png',
+						sizes: '192x192',
+						type: 'image/png',
+						purpose: 'maskable'
 					},
 					{
 						src: '/android-chrome-512x512.png',
 						sizes: '512x512',
 						type: 'image/png',
-						purpose: 'any maskable'
+						purpose: 'any'
+					},
+					{
+						src: '/android-chrome-512x512.png',
+						sizes: '512x512',
+						type: 'image/png',
+						purpose: 'maskable'
+					}
+				],
+				screenshots: [
+					{
+						src: '/screenshots/mobile-light.png',
+						sizes: '930x1734',
+						type: 'image/png',
+						form_factor: 'narrow',
+						label: 'Mobile view - Light theme'
+					},
+					{
+						src: '/screenshots/mobile-dark.png',
+						sizes: '924x1734',
+						type: 'image/png',
+						form_factor: 'narrow',
+						label: 'Mobile view - Dark theme'
+					},
+					{
+						src: '/screenshots/desktop-light.png',
+						sizes: '2522x2012',
+						type: 'image/png',
+						form_factor: 'wide',
+						label: 'Desktop view - Light theme'
+					},
+					{
+						src: '/screenshots/desktop-dark.png',
+						sizes: '2544x2018',
+						type: 'image/png',
+						form_factor: 'wide',
+						label: 'Desktop view - Dark theme'
 					}
 				]
 			},
