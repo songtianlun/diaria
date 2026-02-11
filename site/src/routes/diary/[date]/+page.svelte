@@ -5,6 +5,7 @@
 	import TiptapEditor from '$lib/components/editor/TiptapEditor.svelte';
 	import TableOfContents from '$lib/components/ui/TableOfContents.svelte';
 	import Footer from '$lib/components/ui/Footer.svelte';
+	import DiaryShareModal from '$lib/components/share/DiaryShareModal.svelte';
 	import { getDiaryByDate } from '$lib/api/diaries';
 	import { isAuthenticated } from '$lib/api/client';
 	import {
@@ -34,8 +35,9 @@
 	let content = '';
 	let loading = true;
 	let loadRequestId = 0;
-	let showMobileToc = false;
+	let showDrawer = false;
 	let showDesktopToc = true;
+	let showShareModal = false;
 
 	$: date = $page.params.date;
 	$: canGoNext = !isToday(date);
@@ -244,7 +246,7 @@
 							</button>
 						{/if}
 
-						<a href="/assistant" class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200" title="AI Assistant">
+						<a href="/assistant" class="hidden sm:block p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200" title="AI Assistant">
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<rect x="4" y="6" width="16" height="12" rx="2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 								<line x1="12" y1="6" x2="12" y2="2" stroke-width="2" stroke-linecap="round"/>
@@ -258,14 +260,24 @@
 						</a>
 
 						<button
+							on:click={() => showShareModal = true}
+							class="hidden sm:block p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200"
+							title="Share as image"
+						>
+							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+							</svg>
+						</button>
+
+						<button
 							on:click={() => {
 								if (window.innerWidth >= 1024) {
 									showDesktopToc = !showDesktopToc;
 								} else {
-									showMobileToc = !showMobileToc;
+									showDrawer = !showDrawer;
 								}
 							}}
-							class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200 {(showDesktopToc || showMobileToc) ? 'bg-muted/50' : ''}"
+							class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200 {(showDesktopToc || showDrawer) ? 'bg-muted/50' : ''}"
 							title="Table of contents"
 						>
 							<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -301,15 +313,7 @@
 			</div>
 		</header>
 
-		<!-- Mobile TOC - Inside sticky container -->
-		{#if showMobileToc}
-			<div class="lg:hidden glass-subtle border-b border-border/50 animate-slide-in-down">
-				<div class="max-w-6xl mx-auto px-4 py-2 max-h-[30vh] overflow-y-auto">
-					<TableOfContents {content} />
-				</div>
 			</div>
-		{/if}
-	</div>
 
 	<!-- Main Content -->
 	<div class="max-w-6xl mx-auto px-4 py-6">
@@ -352,6 +356,130 @@
 	<!-- Footer -->
 	<Footer maxWidth="6xl" tagline="Ctrl+S or ⌘S to save" />
 </div>
+
+<!-- Left Drawer -->
+{#if showDrawer}
+	<!-- Backdrop -->
+	<button
+		class="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+		on:click={() => showDrawer = false}
+		aria-label="Close menu"
+	></button>
+
+	<!-- Drawer Panel -->
+	<div class="fixed inset-y-0 left-0 w-72 bg-card border-r border-border shadow-2xl z-50 lg:hidden animate-slide-in-left">
+		<!-- Drawer Header -->
+		<div class="flex items-center justify-between px-5 py-4 border-b border-border/50">
+			<div class="flex items-center gap-2">
+				<img src="/logo.png" alt="Diarum" class="w-6 h-6" />
+				<span class="font-semibold text-foreground">Menu</span>
+			</div>
+			<button
+				on:click={() => showDrawer = false}
+				class="p-2 hover:bg-muted rounded-lg transition-colors"
+				aria-label="Close"
+			>
+				<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+				</svg>
+			</button>
+		</div>
+
+		<!-- Drawer Content -->
+		<div class="flex flex-col h-[calc(100%-57px)]">
+			<!-- Actions Section -->
+			<div class="px-3 py-3">
+				<div class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+					Quick Actions
+				</div>
+				<div class="space-y-0.5">
+					<a
+						href="/assistant"
+						class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/70 transition-all duration-200 group"
+						on:click={() => showDrawer = false}
+					>
+						<div class="p-1.5 rounded-md bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+							<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<rect x="4" y="6" width="16" height="12" rx="2" stroke-width="2"/>
+								<circle cx="9" cy="11" r="1.5" fill="currentColor"/>
+								<circle cx="15" cy="11" r="1.5" fill="currentColor"/>
+							</svg>
+						</div>
+						<div class="min-w-0">
+							<div class="text-xs font-medium text-foreground">AI Assistant</div>
+							<div class="text-[10px] text-muted-foreground truncate">Chat with AI about your diary</div>
+						</div>
+					</a>
+
+					<button
+						on:click={() => { showDrawer = false; showShareModal = true; }}
+						class="w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/70 transition-all duration-200 group"
+					>
+						<div class="p-1.5 rounded-md bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
+							<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+							</svg>
+						</div>
+						<div class="min-w-0 text-left">
+							<div class="text-xs font-medium text-foreground">Share</div>
+							<div class="text-[10px] text-muted-foreground truncate">Export as beautiful image</div>
+						</div>
+					</button>
+
+					<a
+						href="/diary"
+						class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/70 transition-all duration-200 group"
+						on:click={() => showDrawer = false}
+					>
+						<div class="p-1.5 rounded-md bg-green-500/10 text-green-500 group-hover:bg-green-500/20 transition-colors">
+							<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+									d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+							</svg>
+						</div>
+						<div class="min-w-0">
+							<div class="text-xs font-medium text-foreground">Calendar</div>
+							<div class="text-[10px] text-muted-foreground truncate">View all diary entries</div>
+						</div>
+					</a>
+
+					<a
+						href="/settings"
+						class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/70 transition-all duration-200 group"
+						on:click={() => showDrawer = false}
+					>
+						<div class="p-1.5 rounded-md bg-gray-500/10 text-gray-500 group-hover:bg-gray-500/20 transition-colors">
+							<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+							</svg>
+						</div>
+						<div class="min-w-0">
+							<div class="text-xs font-medium text-foreground">Settings</div>
+							<div class="text-[10px] text-muted-foreground truncate">Preferences & sync</div>
+						</div>
+					</a>
+				</div>
+			</div>
+
+			<!-- Divider -->
+			<div class="mx-3 border-t border-border/50"></div>
+
+			<!-- TOC Section -->
+			<div class="flex-1 overflow-y-auto px-3 py-3">
+				<TableOfContents {content} onNavigate={() => showDrawer = false} />
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Share Modal -->
+<DiaryShareModal
+	isOpen={showShareModal}
+	{date}
+	{content}
+	onClose={() => showShareModal = false}
+/>
 
 <style>
 	kbd {
