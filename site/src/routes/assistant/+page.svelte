@@ -109,7 +109,7 @@
 <div class="h-screen bg-background flex flex-col overflow-hidden">
 	<PageHeader title="AI Assistant" sticky={false}>
 		<div slot="actions" class="flex items-center gap-2">
-			<a href="/settings" class="p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200" title="Settings">
+			<a href="/settings" class="hidden lg:block p-1.5 hover:bg-muted/50 rounded-lg transition-all duration-200" title="Settings">
 				<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
 						d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -157,18 +157,15 @@
 			<!-- Mobile Overlay -->
 			{#if sidebarOpen}
 				<button
-					class="fixed inset-0 bg-black/50 z-30 lg:hidden"
+					class="fixed inset-0 bg-black/40 backdrop-blur-sm z-30 lg:hidden"
 					on:click={() => sidebarOpen = false}
 					aria-label="Close sidebar"
 				></button>
 			{/if}
 
-			<!-- Sidebar -->
-			<aside class="fixed lg:relative inset-y-0 left-0 z-40 w-72 lg:w-72
-				bg-card lg:bg-card/50 border-r lg:border border-border lg:rounded-2xl flex-shrink-0
-				transform transition-transform duration-300 ease-in-out
-				{sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
-				top-11 lg:top-0 h-[calc(100vh-2.75rem)] lg:h-full overflow-hidden">
+			<!-- Sidebar - Desktop -->
+			<aside class="hidden lg:block lg:relative w-72
+				bg-card/50 border border-border rounded-2xl flex-shrink-0 overflow-hidden">
 				<ConversationList
 					{conversations}
 					selectedId={null}
@@ -178,6 +175,120 @@
 					on:delete={(e) => handleDeleteConversation(e.detail)}
 				/>
 			</aside>
+
+			<!-- Mobile Drawer -->
+			{#if sidebarOpen}
+				<div class="fixed inset-y-0 left-0 w-72 bg-card border-r border-border shadow-2xl z-40 lg:hidden animate-slide-in-left">
+					<!-- Drawer Header -->
+					<div class="flex items-center justify-between px-5 py-4 border-b border-border/50">
+						<div class="flex items-center gap-2">
+							<img src="/logo.png" alt="Diarum" class="w-6 h-6" />
+							<span class="font-semibold text-foreground">AI Assistant</span>
+						</div>
+						<button
+							on:click={() => sidebarOpen = false}
+							class="p-2 hover:bg-muted rounded-lg transition-colors"
+							aria-label="Close"
+						>
+							<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					</div>
+
+					<!-- Drawer Content -->
+					<div class="flex flex-col h-[calc(100%-57px)]">
+						<!-- Actions Section -->
+						<div class="px-3 py-3">
+							<div class="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+								Quick Actions
+							</div>
+							<div class="space-y-0.5">
+								<a
+									href="/diary"
+									class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/70 transition-all duration-200 group"
+									on:click={() => sidebarOpen = false}
+								>
+									<div class="p-1.5 rounded-md bg-green-500/10 text-green-500 group-hover:bg-green-500/20 transition-colors">
+										<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+												d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+										</svg>
+									</div>
+									<div class="min-w-0">
+										<div class="text-xs font-medium text-foreground">Calendar</div>
+										<div class="text-[10px] text-muted-foreground truncate">View all diary entries</div>
+									</div>
+								</a>
+
+								<a
+									href="/search"
+									class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/70 transition-all duration-200 group"
+									on:click={() => sidebarOpen = false}
+								>
+									<div class="p-1.5 rounded-md bg-blue-500/10 text-blue-500 group-hover:bg-blue-500/20 transition-colors">
+										<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+										</svg>
+									</div>
+									<div class="min-w-0">
+										<div class="text-xs font-medium text-foreground">Search</div>
+										<div class="text-[10px] text-muted-foreground truncate">Find diary entries</div>
+									</div>
+								</a>
+
+								<a
+									href="/media"
+									class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/70 transition-all duration-200 group"
+									on:click={() => sidebarOpen = false}
+								>
+									<div class="p-1.5 rounded-md bg-purple-500/10 text-purple-500 group-hover:bg-purple-500/20 transition-colors">
+										<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+										</svg>
+									</div>
+									<div class="min-w-0">
+										<div class="text-xs font-medium text-foreground">Media</div>
+										<div class="text-[10px] text-muted-foreground truncate">Browse photos & files</div>
+									</div>
+								</a>
+
+								<a
+									href="/settings"
+									class="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-muted/70 transition-all duration-200 group"
+									on:click={() => sidebarOpen = false}
+								>
+									<div class="p-1.5 rounded-md bg-gray-500/10 text-gray-500 group-hover:bg-gray-500/20 transition-colors">
+										<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+										</svg>
+									</div>
+									<div class="min-w-0">
+										<div class="text-xs font-medium text-foreground">Settings</div>
+										<div class="text-[10px] text-muted-foreground truncate">Preferences & AI config</div>
+									</div>
+								</a>
+							</div>
+						</div>
+
+						<!-- Divider -->
+						<div class="mx-3 border-t border-border/50"></div>
+
+						<!-- Conversations Section -->
+						<div class="flex-1 overflow-hidden">
+							<ConversationList
+								{conversations}
+								selectedId={null}
+								{loading}
+								on:select={(e) => { sidebarOpen = false; handleSelectConversation(e.detail); }}
+								on:create={() => { sidebarOpen = false; handleStartNewChat(); }}
+								on:delete={(e) => handleDeleteConversation(e.detail)}
+							/>
+						</div>
+					</div>
+				</div>
+			{/if}
 
 			<!-- Chat Area - New Chat Mode -->
 			<main class="flex-1 flex flex-col min-w-0 lg:bg-card/50 lg:border lg:border-border lg:rounded-2xl overflow-hidden">
