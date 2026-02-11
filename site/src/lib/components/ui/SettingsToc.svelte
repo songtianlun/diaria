@@ -18,10 +18,13 @@
 
 	let activeSection = '';
 
-	function scrollToSection(id: string) {
+	function scrollToSection(id: string, updateHash = true) {
 		const el = document.getElementById(id);
 		if (el) {
 			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			if (updateHash) {
+				history.replaceState(null, '', `#${id}`);
+			}
 		}
 	}
 
@@ -40,7 +43,15 @@
 	}
 
 	onMount(() => {
-		updateActiveSection();
+		// Check URL hash on mount and scroll to section
+		const hash = window.location.hash.slice(1);
+		if (hash && sections.some(s => s.id === hash)) {
+			setTimeout(() => scrollToSection(hash, false), 100);
+			activeSection = hash;
+		} else {
+			updateActiveSection();
+		}
+
 		window.addEventListener('scroll', updateActiveSection, { passive: true });
 		return () => {
 			window.removeEventListener('scroll', updateActiveSection);
