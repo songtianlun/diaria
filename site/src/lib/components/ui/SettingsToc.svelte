@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 
 	export let className = '';
+	export let onNavigate: (() => void) | undefined = undefined;
 
 	interface TocItem {
 		id: string;
@@ -18,13 +19,16 @@
 
 	let activeSection = '';
 
-	function scrollToSection(id: string, updateHash = true) {
+	function scrollToSection(id: string, updateHash = true, triggerCallback = true) {
 		const el = document.getElementById(id);
 		if (el) {
 			el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			if (updateHash) {
 				history.replaceState(null, '', `#${id}`);
 			}
+		}
+		if (triggerCallback) {
+			onNavigate?.();
 		}
 	}
 
@@ -46,7 +50,7 @@
 		// Check URL hash on mount and scroll to section
 		const hash = window.location.hash.slice(1);
 		if (hash && sections.some(s => s.id === hash)) {
-			setTimeout(() => scrollToSection(hash, false), 100);
+			setTimeout(() => scrollToSection(hash, false, false), 100);
 			activeSection = hash;
 		} else {
 			updateActiveSection();
