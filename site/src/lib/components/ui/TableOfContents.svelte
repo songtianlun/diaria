@@ -1,6 +1,7 @@
 <script lang="ts">
 	export let content = '';
 	export let className = '';
+	export let onNavigate: (() => void) | undefined = undefined;
 
 	interface TocItem {
 		id: string;
@@ -38,7 +39,17 @@
 		const targetEl = headingEls[headingIndex];
 
 		if (targetEl) {
-			targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			const headerOffset = 60; // Account for sticky header
+			const elementPosition = targetEl.getBoundingClientRect().top;
+			const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+			window.scrollTo({
+				top: offsetPosition,
+				behavior: 'smooth'
+			});
+
+			// Notify parent to close drawer if needed
+			onNavigate?.();
 		}
 	}
 </script>
