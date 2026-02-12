@@ -12,6 +12,7 @@ export default defineConfig({
 			scope: '/',
 			base: '/',
 			selfDestroying: false,
+			includeAssets: ['**/*'],
 			manifest: {
 				name: 'Diarum - Personal Diary',
 				short_name: 'Diarum',
@@ -84,6 +85,11 @@ export default defineConfig({
 			},
 			workbox: {
 				globPatterns: ['**/*.{js,css,html,ico,png,svg,webp,woff,woff2}'],
+				navigateFallback: 'index.html',
+				navigateFallbackAllowlist: [/^\/(?!api\/).*/],
+				additionalManifestEntries: [
+					{ url: 'index.html', revision: null }
+				],
 				cleanupOutdatedCaches: true,
 				clientsClaim: true,
 				runtimeCaching: [
@@ -133,7 +139,7 @@ export default defineConfig({
 				]
 			},
 			devOptions: {
-				enabled: true,
+				enabled: false,
 				suppressWarnings: true,
 				type: 'module'
 			}
@@ -152,7 +158,7 @@ export default defineConfig({
 			}
 		},
 		allowedHosts: [
-			'f316-124-244-250-14.ngrok-free.app'
+			'2dd3-124-244-250-14.ngrok-free.app'
 		]
 	}
 });
