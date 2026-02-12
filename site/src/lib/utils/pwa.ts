@@ -49,11 +49,19 @@ async function registerServiceWorker() {
 
 	try {
 		const { registerSW } = await import('virtual:pwa-register');
+
+		// Check if this is the first SW registration
+		const hasExistingSW = await navigator.serviceWorker.getRegistration();
+
 		updateSW = registerSW({
 			immediate: true,
 			onNeedRefresh() {
-				isUpdateAvailable.set(true);
-				console.log('PWA: New content available, refresh needed');
+				// Only show update prompt if SW was already registered before
+				// (not on first visit)
+				if (hasExistingSW) {
+					isUpdateAvailable.set(true);
+					console.log('PWA: New content available, refresh needed');
+				}
 			},
 			onOfflineReady() {
 				console.log('PWA: App ready to work offline');

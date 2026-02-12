@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { canInstall, installPWA, isIOS, showIOSInstallGuide, dismissIOSGuide } from '$lib/utils/pwa';
+	import { canInstall, installPWA, isIOS, showIOSInstallGuide, dismissIOSGuide, isUpdateAvailable } from '$lib/utils/pwa';
 	import { onMount } from 'svelte';
 
 	let showPrompt = false;
 	let showIOSGuide = false;
 	let isIOSDevice = false;
+	let hasUpdate = false;
 	let installing = false;
 
 	onMount(() => {
@@ -20,10 +21,15 @@
 			isIOSDevice = value;
 		});
 
+		const unsubscribeUpdate = isUpdateAvailable.subscribe((value) => {
+			hasUpdate = value;
+		});
+
 		return () => {
 			unsubscribeCanInstall();
 			unsubscribeIOSGuide();
 			unsubscribeIsIOS();
+			unsubscribeUpdate();
 		};
 	});
 
@@ -45,8 +51,8 @@
 	}
 </script>
 
-<!-- Standard install prompt (Chrome/Edge/Android) -->
-{#if showPrompt}
+<!-- Standard install prompt (Chrome/Edge/Android) - hide when update is available -->
+{#if showPrompt && !hasUpdate}
 	<div class="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[100] animate-slide-up">
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-700">
 			<div class="flex items-start gap-3">
@@ -93,8 +99,8 @@
 	</div>
 {/if}
 
-<!-- iOS install guide -->
-{#if showIOSGuide && isIOSDevice}
+<!-- iOS install guide - hide when update is available -->
+{#if showIOSGuide && isIOSDevice && !hasUpdate}
 	<div class="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-96 z-[100] animate-slide-up">
 		<div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 border border-gray-200 dark:border-gray-700">
 			<div class="flex items-start gap-3">
