@@ -41,6 +41,7 @@ Thumbs.db
 site/node_modules/
 site/build/
 site/.svelte-kit/
+site/dev-dist/
 site/package-lock.json
 site/pnpm-lock.yaml
 site/yarn.lock
