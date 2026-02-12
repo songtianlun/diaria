@@ -1,6 +1,8 @@
 // PWA utility functions
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { writable, get } from 'svelte/store';
+import { browser } from '$app/environment';
 
 interface BeforeInstallPromptEvent extends Event {
 	prompt(): Promise<void>;
@@ -94,6 +96,18 @@ export function initPWA() {
 	}
 
 	// Listen for beforeinstallprompt event (Chrome/Edge/Android)
+	const platform = detectPlatform();
+
+	// Register Service Worker
+	registerServiceWorker();
+
+	// If already installed as standalone, don't show install prompts
+	if (isStandalone()) {
+		canInstall.set(false);
+		return;
+	}
+
+	// Listen for beforeinstallprompt event (Chrome/Edge/Android)
 	window.addEventListener('beforeinstallprompt', (e) => {
 		e.preventDefault();
 		deferredPrompt.set(e as BeforeInstallPromptEvent);
@@ -104,6 +118,7 @@ export function initPWA() {
 	window.addEventListener('appinstalled', () => {
 		deferredPrompt.set(null);
 		canInstall.set(false);
+		showIOSInstallGuide.set(false);
 		showIOSInstallGuide.set(false);
 		console.log('PWA installed successfully');
 	});
