@@ -1,5 +1,6 @@
 // PWA utility functions
 import { writable, get } from 'svelte/store';
+import { browser } from '$app/environment';
 
 interface BeforeInstallPromptEvent extends Event {
 	prompt(): Promise<void>;
@@ -15,6 +16,9 @@ export const isUpdateAvailable = writable(false);
 export const isIOS = writable(false);
 export const isAndroid = writable(false);
 export const showIOSInstallGuide = writable(false);
+
+// Service Worker registration
+let updateSW: ((reloadPage?: boolean) => Promise<void>) | undefined;
 
 // Detect platform
 export function detectPlatform() {
@@ -39,11 +43,41 @@ export function isStandalone() {
 		(window.navigator as any).standalone === true;
 }
 
+// Register Service Worker
+async function registerServiceWorker() {
+	if (!browser) return;
+
+	try {
+		const { registerSW } = await import('virtual:pwa-register');
+		updateSW = registerSW({
+			immediate: true,
+			onNeedRefresh() {
+				isUpdateAvailable.set(true);
+				console.log('PWA: New content available, refresh needed');
+			},
+			onOfflineReady() {
+				console.log('PWA: App ready to work offline');
+			},
+			onRegistered(registration) {
+				console.log('PWA: Service Worker registered', registration);
+			},
+			onRegisterError(error) {
+				console.error('PWA: Service Worker registration failed', error);
+			}
+		});
+	} catch (error) {
+		console.error('PWA: Failed to register service worker', error);
+	}
+}
+
 // Initialize PWA features
 export function initPWA() {
 	if (typeof window === 'undefined') return;
 
 	const platform = detectPlatform();
+
+	// Register Service Worker
+	registerServiceWorker();
 
 	// If already installed as standalone, don't show install prompts
 	if (isStandalone()) {

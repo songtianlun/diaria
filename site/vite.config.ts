@@ -133,7 +133,7 @@ export default defineConfig({
 				]
 			},
 			devOptions: {
-				enabled: false,
+				enabled: true,
 				suppressWarnings: true,
 				type: 'module'
 			}
