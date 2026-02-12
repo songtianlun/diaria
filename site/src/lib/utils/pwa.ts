@@ -25,7 +25,8 @@ export function detectPlatform() {
 	if (typeof window === 'undefined') return;
 
 	const ua = window.navigator.userAgent;
-	const isIOSDevice = /iPad|iPhone|iPod/.test(ua) ||
+	const isIOSDevice =
+		/iPad|iPhone|iPod/.test(ua) ||
 		(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 	const isAndroidDevice = /Android/.test(ua);
 
@@ -39,8 +40,10 @@ export function detectPlatform() {
 export function isStandalone() {
 	if (typeof window === 'undefined') return false;
 
-	return window.matchMedia('(display-mode: standalone)').matches ||
-		(window.navigator as any).standalone === true;
+	return (
+		window.matchMedia('(display-mode: standalone)').matches ||
+		(window.navigator as any).standalone === true
+	);
 }
 
 // Register Service Worker
@@ -49,11 +52,18 @@ async function registerServiceWorker() {
 
 	try {
 		const { registerSW } = await import('virtual:pwa-register');
+
 		updateSW = registerSW({
 			immediate: true,
 			onNeedRefresh() {
-				isUpdateAvailable.set(true);
-				console.log('PWA: New content available, refresh needed');
+				// Only show update prompt in standalone PWA mode
+				// In browser, user can simply refresh to get updates
+				if (isStandalone()) {
+					isUpdateAvailable.set(true);
+					console.log('PWA: New content available, refresh needed');
+				} else {
+					console.log('PWA: New content available (browser mode, no prompt)');
+				}
 			},
 			onOfflineReady() {
 				console.log('PWA: App ready to work offline');
@@ -102,7 +112,6 @@ export function initPWA() {
 
 	// For iOS, show install guide after a delay (since beforeinstallprompt won't fire)
 	if (platform?.isIOS) {
-		// Check if user has dismissed the guide before
 		const dismissed = localStorage.getItem('pwa-ios-guide-dismissed');
 		if (!dismissed) {
 			setTimeout(() => {
@@ -159,13 +168,21 @@ export function listenForUpdates() {
 	if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
 	navigator.serviceWorker.addEventListener('controllerchange', () => {
-		isUpdateAvailable.set(true);
+		// Only show update prompt in standalone PWA mode
+		if (isStandalone()) {
+			isUpdateAvailable.set(true);
+		}
 	});
 
-	// Check for updates every 60 minutes
-	setInterval(() => {
-		checkForUpdates();
-	}, 60 * 60 * 1000);
+	// Check for updates every 60 minutes (only in standalone mode)
+	if (isStandalone()) {
+		setInterval(
+			() => {
+				checkForUpdates();
+			},
+			60 * 60 * 1000
+		);
+	}
 }
 
 // Reload to apply updates
