@@ -1,6 +1,8 @@
 // PWA utility functions
 import { writable, get } from 'svelte/store';
 import { browser } from '$app/environment';
+import { writable, get } from 'svelte/store';
+import { browser } from '$app/environment';
 
 interface BeforeInstallPromptEvent extends Event {
 	prompt(): Promise<void>;
@@ -49,11 +51,19 @@ async function registerServiceWorker() {
 
 	try {
 		const { registerSW } = await import('virtual:pwa-register');
+
+		// Check if this is the first SW registration
+		const hasExistingSW = await navigator.serviceWorker.getRegistration();
+
 		updateSW = registerSW({
 			immediate: true,
 			onNeedRefresh() {
-				isUpdateAvailable.set(true);
-				console.log('PWA: New content available, refresh needed');
+				// Only show update prompt if SW was already registered before
+				// (not on first visit)
+				if (hasExistingSW) {
+					isUpdateAvailable.set(true);
+					console.log('PWA: New content available, refresh needed');
+				}
 			},
 			onOfflineReady() {
 				console.log('PWA: App ready to work offline');
@@ -86,6 +96,18 @@ export function initPWA() {
 	}
 
 	// Listen for beforeinstallprompt event (Chrome/Edge/Android)
+	const platform = detectPlatform();
+
+	// Register Service Worker
+	registerServiceWorker();
+
+	// If already installed as standalone, don't show install prompts
+	if (isStandalone()) {
+		canInstall.set(false);
+		return;
+	}
+
+	// Listen for beforeinstallprompt event (Chrome/Edge/Android)
 	window.addEventListener('beforeinstallprompt', (e) => {
 		e.preventDefault();
 		deferredPrompt.set(e as BeforeInstallPromptEvent);
@@ -96,6 +118,7 @@ export function initPWA() {
 	window.addEventListener('appinstalled', () => {
 		deferredPrompt.set(null);
 		canInstall.set(false);
+		showIOSInstallGuide.set(false);
 		showIOSInstallGuide.set(false);
 		console.log('PWA installed successfully');
 	});
