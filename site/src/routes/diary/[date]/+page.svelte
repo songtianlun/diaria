@@ -29,7 +29,7 @@
 		cleanupDiaryCache
 	} from '$lib/stores/diaryCache';
 	import { onlineState } from '$lib/stores/onlineStatus';
-	import { isInCacheRange } from '$lib/stores/persistence';
+	import { isInCacheRange, getPersistedEntry } from '$lib/stores/persistence';
 	import { getConfig } from '$lib/stores/syncConfig';
 
 	let content = '';
@@ -104,9 +104,20 @@
 			content = updatedCache?.content || '';
 		} catch (error) {
 			console.error('Failed to load diary:', error);
-			// If fetch fails but we have cache, use it
-			if (cached) {
+			// If fetch fails, try to use cache
+			// First try memory cache, then fall back to localStorage directly
+			const fallbackCache = getCachedContent(targetDate);
+			if (fallbackCache) {
+				content = fallbackCache.content;
+			} else if (cached) {
 				content = cached.content;
+			} else {
+				// Try to load directly from localStorage as last resort
+				// This handles the case where initDiaryCache hasn't completed yet
+				const persisted = getPersistedEntry(targetDate);
+				if (persisted) {
+					content = persisted.content;
+				}
 			}
 		}
 		loading = false;
