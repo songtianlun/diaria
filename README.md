@@ -338,3 +338,7 @@ If you encounter any issues or have questions, please [open an issue](https://gi
 ---
 
 **Made with ❤️ by [songtianlun](https://github.com/songtianlun)**
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=songtianlun/diarum&type=timeline&legend=top-left)](https://www.star-history.com/#songtianlun/diarum&type=timeline&legend=top-left)
